@@ -1,0 +1,27 @@
+{
+    "name": "datacue/woocommerce-plugin",
+    "description": "WooCommerce Plugin for DataCue Client",
+    "license": "GPL-2.0",
+    "type": "project",
+    "authors": [
+        {
+            "name": "DataCue",
+            "email": "contact@datacue.co",
+            "homepage": "https://www.datacue.co"
+        },
+        {
+            "name": "chenruimin",
+            "email": "ruiminch@163.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=5.4",
+        "datacue/client": "dev-master"
+    },
+    "autoload": {
+        "psr-4": {
+            "DataCue\\WooCommerce\\": "src/"
+        }
+    }
+}
