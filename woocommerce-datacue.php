@@ -20,6 +20,8 @@ use DataCue\WooCommerce\Modules\User;
 use DataCue\WooCommerce\Modules\Product;
 use DataCue\WooCommerce\Modules\Order;
 use DataCue\WooCommerce\Pages\SettingsPage;
+use DataCue\WooCommerce\Widgets\Banner;
+use DataCue\WooCommerce\Widgets\ProductCarousel;
 use DataCue\WooCommerce\Events\BrowserEvents;
 
 function onPluginActivated() {}
@@ -35,6 +37,7 @@ if ($dataCueOptions) {
     );
     $options = ['debug' => false];
 
+    // hooks
     User::registerHooks($client, $options);
     Product::registerHooks($client, $options);
     Order::registerHooks($client, $options);
@@ -42,7 +45,13 @@ if ($dataCueOptions) {
     // TDO
     register_activation_hook(__FILE__, 'onPluginActivated');
 
+    // widgets
+    Banner::registerWidget();
+    ProductCarousel::registerWidget();
+
+    // events
     BrowserEvents::registerHooks($dataCueOptions);
 }
 
+// setting page
 SettingsPage::registerPage();
