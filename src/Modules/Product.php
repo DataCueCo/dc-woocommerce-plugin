@@ -9,6 +9,55 @@ namespace DataCue\WooCommerce\Modules;
 class Product extends Base
 {
     /**
+     * Generate product item for DataCue
+     * @param $id Product ID
+     * @return array
+     */
+    public static function generateProductItem($id) {
+        $product = wc_get_product($id);
+
+        // generate product item for DataCue
+        $item = [
+            'name' => $product->get_name(),
+            'price' => $product->get_sale_price() ? (float)$product->get_sale_price() : (float)$product->get_regular_price(),
+            'full_price' => (float)$product->get_regular_price(),
+            'link' => get_permalink($product->get_id()),
+            'available' => $product->get_status() === 'publish',
+        ];
+
+        // get photo url
+        $imageId = $product->get_image_id();
+        if ($imageId) {
+            $item['photo_url'] = wp_get_attachment_image_url($imageId);
+        } else {
+            $item['photo_url'] = wc_placeholder_img_src();
+        }
+
+        // get stock
+        $stock = $product->get_stock_quantity();
+        if (!is_null($stock)) {
+            $item['stock'] = $stock;
+        }
+
+        // get categories
+        $item['categories'] = [];
+        $item['main_category'] = '';
+        $categorieIds = $product->get_category_ids();
+        if (count($categorieIds) > 0) {
+            $parentCategoryIds = get_ancestors($categorieIds[0], 'product_cat');
+            if (count($parentCategoryIds) > 0) {
+                $category = get_term($parentCategoryIds[0], 'product_cat');
+                $item['categories'][] = $category->name;
+            }
+            $category = get_term($categorieIds[0], 'product_cat');
+            $item['categories'][] = $category->name;
+            $item['main_category'] = $category->name;
+        }
+
+        return $item;
+    }
+
+    /**
      * Product constructor.
      * @param $client
      * @param array $options
@@ -36,45 +85,8 @@ class Product extends Base
             $this->log('onProductSaved create');
         }
 
-        $product = wc_get_product($id);
+        $item = static::generateProductItem($id);
 
-        // generate product item for DataCue
-        $item = [
-            'name' => $product->get_name(),
-            'price' => $product->get_sale_price() ? (float)$product->get_sale_price() : (float)$product->get_regular_price(),
-            'full_price' => (float)$product->get_regular_price(),
-            'link' => get_permalink($id),
-            'available' => $product->get_status() === 'publish',
-        ];
-
-        // get photo url
-        $imageId = $product->get_image_id();
-        if ($imageId) {
-            $item['photo_url'] = wp_get_attachment_image_src($imageId);
-        } else {
-            $item['photo_url'] = wc_placeholder_img_src();
-        }
-
-        // get stock
-        $stock = $product->get_stock_quantity();
-        if (!is_null($stock)) {
-            $item['stock'] = $stock;
-        }
-
-        // get categories
-        $item['categories'] = [];
-        $item['main_category'] = '';
-        $categorieIds = $product->get_category_ids();
-        if (count($categorieIds) > 0) {
-            $parentCategoryIds = get_ancestors($categorieIds[0], 'product_cat');
-            if (count($parentCategoryIds) > 0) {
-                $category = get_term($parentCategoryIds[0], 'product_cat');
-                $item['categories'][] = $category->name;
-            }
-            $category = get_term($categorieIds[0], 'product_cat');
-            $item['categories'][] = $category->name;
-            $item['main_category'] = $category->name;
-        }
         $this->log("product_id=$id");
         $this->log($item);
 

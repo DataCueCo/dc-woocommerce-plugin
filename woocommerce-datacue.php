@@ -20,17 +20,18 @@ use DataCue\WooCommerce\Modules\User;
 use DataCue\WooCommerce\Modules\Product;
 use DataCue\WooCommerce\Modules\Order;
 use DataCue\WooCommerce\Pages\SettingsPage;
+use DataCue\WooCommerce\Events\BrowserEvents;
 
 function onPluginActivated() {}
 
-$options = get_option('datacue_options');
+$dataCueOptions = get_option('datacue_options');
 
-if ($options) {
+if ($dataCueOptions) {
     $client = new \DataCue\Client(
-        $options['api_key'],
-        $options['api_secret'],
+        $dataCueOptions['api_key'],
+        $dataCueOptions['api_secret'],
         ['max_try_times' => 3],
-        array_key_exists('server', $options) && $options['server'] === 'development' ? 'development' : 'production'
+        array_key_exists('server', $dataCueOptions) && $dataCueOptions['server'] === 'development' ? 'development' : 'production'
     );
     $options = ['debug' => false];
 
@@ -40,6 +41,8 @@ if ($options) {
 
     // TDO
     register_activation_hook(__FILE__, 'onPluginActivated');
+
+    BrowserEvents::registerHooks($dataCueOptions);
 }
 
 SettingsPage::registerPage();
