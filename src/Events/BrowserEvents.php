@@ -4,15 +4,31 @@ namespace DataCue\WooCommerce\Events;
 
 use DataCue\WooCommerce\Modules\Product;
 
+/**
+ * Class BrowserEvents
+ * @package DataCue\WooCommerce\Events
+ */
 class BrowserEvents
 {
+    /**
+     * @var array includes api_key/api_secret
+     */
     private $dataCueOptions;
 
+    /**
+     * Register hooks
+     * @param $dataCueOptions
+     * @return BrowserEvents
+     */
     public static function registerHooks($dataCueOptions)
     {
         return new static($dataCueOptions);
     }
 
+    /**
+     * BrowserEvents constructor.
+     * @param $dataCueOptions
+     */
     public function __construct($dataCueOptions)
     {
         $this->dataCueOptions = $dataCueOptions;
@@ -20,6 +36,9 @@ class BrowserEvents
         add_action('wp_head', [$this, 'onHead']);
     }
 
+    /**
+     * The callback of Page Head hook
+     */
     public function onHead()
     {
         if (is_shop()) {
@@ -35,9 +54,11 @@ class BrowserEvents
         } else if (is_404()) {
             $this->on404Page();
         }
-
     }
 
+    /**
+     * For home page of the shop
+     */
     private function onHomePage()
     {
         echo <<<EOT
@@ -53,6 +74,9 @@ window.datacueConfig = {
 EOT;
     }
 
+    /**
+     * For category page
+     */
     private function onCategoryPage()
     {
         // current category
@@ -71,6 +95,9 @@ window.datacueConfig = {
 EOT;
     }
 
+    /**
+     * For product page
+     */
     private function onProductPage()
     {
         $productId = get_the_ID();
@@ -93,6 +120,9 @@ window.datacueConfig = {
 EOT;
     }
 
+    /**
+     * For shopping cart page
+     */
     private function onCartPage()
     {
         echo <<<EOT
@@ -108,6 +138,9 @@ window.datacueConfig = {
 EOT;
     }
 
+    /**
+     * For search page
+     */
     private function onSearchPage()
     {
         $term = get_search_query();
@@ -125,6 +158,9 @@ window.datacueConfig = {
 EOT;
     }
 
+    /**
+     * For 404 page
+     */
     private function on404Page()
     {
         echo <<<EOT
@@ -140,6 +176,10 @@ window.datacueConfig = {
 EOT;
     }
 
+    /**
+     * Get current user id
+     * @return int|string
+     */
     private function getUserId()
     {
         return get_current_user_id() > 0 ? get_current_user_id() : 'null';
