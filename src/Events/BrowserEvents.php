@@ -15,6 +15,9 @@ class BrowserEvents
      */
     private $dataCueOptions;
 
+
+    private $dataCueConfigOptions = '{}';
+
     /**
      * Register hooks
      * @param $dataCueOptions
@@ -32,6 +35,9 @@ class BrowserEvents
     public function __construct($dataCueOptions)
     {
         $this->dataCueOptions = $dataCueOptions;
+        if ($dataCueOptions['server'] === 'development') {
+            $this->dataCueConfigOptions = '{_staging: true}';
+        }
 
         add_action('wp_head', [$this, 'onHead']);
     }
@@ -66,6 +72,7 @@ class BrowserEvents
 window.datacueConfig = {
   api_key: '{$this->dataCueOptions['api_key']}',
   user_id: {$this->getUserId()},
+  options: {$this->dataCueConfigOptions},
   page_type: 'home'
 };
 </script>
@@ -86,6 +93,7 @@ EOT;
 window.datacueConfig = {
   api_key: '{$this->dataCueOptions['api_key']}',
   user_id: {$this->getUserId()},
+  options: {$this->dataCueConfigOptions},
   page_type: 'category',
   category_name: '{$category->name}'
 };
@@ -109,6 +117,7 @@ EOT;
 window.datacueConfig = {
   api_key: '{$this->dataCueOptions['api_key']}',
   user_id: {$this->getUserId()},
+  options: {$this->dataCueConfigOptions},
   page_type: 'product',
   product_id: $productId,
   variant_id: 'no-variants',
@@ -130,6 +139,7 @@ EOT;
 window.datacueConfig = {
   api_key: '{$this->dataCueOptions['api_key']}',
   user_id: {$this->getUserId()},
+  options: {$this->dataCueConfigOptions},
   page_type: 'cart'
 };
 </script>
@@ -149,6 +159,7 @@ EOT;
 window.datacueConfig = {
   api_key: '{$this->dataCueOptions['api_key']}',
   user_id: {$this->getUserId()},
+  options: {$this->dataCueConfigOptions},
   page_type: 'search',
   term: '$term'
 };
@@ -168,6 +179,7 @@ EOT;
 window.datacueConfig = {
   api_key: '{$this->dataCueOptions['api_key']}',
   user_id: {$this->getUserId()},
+  options: {$this->dataCueConfigOptions},
   page_type: '404'
 };
 </script>
