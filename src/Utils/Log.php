@@ -18,7 +18,7 @@ class Log
             $message = json_encode($message);
         }
         $file = fopen(__DIR__ . "/../../logs.log","a");
-        echo fwrite($file, "\n" . date('Y-m-d h:i:s') . " :: " . $message);
+        fwrite($file, "\n" . date('Y-m-d h:i:s') . " :: " . $message);
         fclose($file);
     }
 }
