@@ -10,10 +10,12 @@ class Product extends Base
 {
     /**
      * Generate product item for DataCue
-     * @param $id Product ID
+     * @param $id int Product ID
+     * @param $withId bool
      * @return array
      */
-    public static function generateProductItem($id) {
+    public static function generateProductItem($id, $withId = false)
+    {
         $product = wc_get_product($id);
 
         // generate product item for DataCue
@@ -54,6 +56,11 @@ class Product extends Base
             $item['main_category'] = $category->name;
         }
 
+        if ($withId) {
+            $item['product_id'] = "$id";
+            $item['variant_id'] = 'no-variants';
+        }
+
         return $item;
     }
 
@@ -85,7 +92,7 @@ class Product extends Base
             $this->log('onProductSaved create');
         }
 
-        $item = static::generateProductItem($id);
+        $item = static::generateProductItem($id, !$update);
 
         $this->log("product_id=$id");
         $this->log($item);
@@ -94,8 +101,6 @@ class Product extends Base
             $res = $this->client->products->update($id, 'no-variants', $item);
             $this->log('update product response: ' . $res);
         } else {
-            $item['product_id'] = "$id";
-            $item['variant_id'] = 'no-variants';
             $res = $this->client->products->create($item);
             $this->log('create product response: ' . $res);
         }

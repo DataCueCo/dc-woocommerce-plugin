@@ -23,8 +23,7 @@ use DataCue\WooCommerce\Pages\SettingsPage;
 use DataCue\WooCommerce\Widgets\Banner;
 use DataCue\WooCommerce\Widgets\ProductCarousel;
 use DataCue\WooCommerce\Events\BrowserEvents;
-
-function onPluginActivated() {}
+use DataCue\WooCommerce\Common\Plugin;
 
 $dataCueOptions = get_option('datacue_options');
 
@@ -35,15 +34,15 @@ if ($dataCueOptions) {
         ['max_try_times' => 3],
         array_key_exists('server', $dataCueOptions) && $dataCueOptions['server'] === 'development' ? 'development' : 'production'
     );
-    $options = ['debug' => false];
+    $options = ['debug' => true];
 
     // hooks
     User::registerHooks($client, $options);
     Product::registerHooks($client, $options);
     Order::registerHooks($client, $options);
 
-    // TDO
-    register_activation_hook(__FILE__, 'onPluginActivated');
+    // plugin hooks
+    Plugin::registerHooks(__FILE__, $client, $options);
 
     // widgets
     Banner::registerWidget();
