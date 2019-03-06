@@ -55,7 +55,7 @@ class Order extends Base
 
         add_action('woocommerce_thankyou', [$this, 'onOrderCreated']);
         add_action('woocommerce_cancelled_order', [$this, 'onOrderCancelled']);
-        add_action('woocommerce_delete_order', [$this, 'onOrderDeleted']);
+        add_action('before_delete_post', [$this, 'onOrderDeleted']);
     }
 
     /**
@@ -91,8 +91,12 @@ class Order extends Base
      */
     public function onOrderDeleted($id)
     {
-        $this->log('onOrderDeleted');
-        $res = $this->client->orders->delete($id);
-        $this->log('delete order response: ', $res);
+        global $post_type;
+
+        if($post_type === 'shop_order') {
+            $this->log('onOrderDeleted');
+            $res = $this->client->orders->delete($id);
+            $this->log('delete order response: ', $res);
+        }
     }
 }
