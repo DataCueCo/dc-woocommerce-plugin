@@ -57,7 +57,7 @@ class Product extends Base
         }
 
         if ($withId) {
-            $item['product_id'] = "$id";
+            $item['product_id'] = $product->get_id();
             $item['variant_id'] = 'no-variants';
         }
 
@@ -74,6 +74,7 @@ class Product extends Base
         parent::__construct($client, $options);
 
         add_action('save_post_product', [$this, 'onProductSaved'], 10, 3);
+        add_action('woocommerce_update_product', [$this, 'onProductUpdated']);
         add_action('delete_post', [$this, 'onProductDeleted']);
     }
 
@@ -86,24 +87,31 @@ class Product extends Base
      */
     public function onProductSaved($id, $post, $update)
     {
-        if ($update) {
-            $this->log('onProductSaved update');
-        } else {
+        if (!$update) {
             $this->log('onProductSaved create');
-        }
+            $this->log("product_id=$id");
 
-        $item = static::generateProductItem($id, !$update);
-
-        $this->log("product_id=$id");
-        $this->log($item);
-
-        if ($update) {
-            $res = $this->client->products->update($id, 'no-variants', $item);
-            $this->log('update product response: ' . $res);
-        } else {
+            $item = static::generateProductItem($id, true);
+            $this->log($item);
             $res = $this->client->products->create($item);
             $this->log('create product response: ' . $res);
         }
+    }
+
+    /**
+     * Product updated callback
+     * @param $id
+     * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     */
+    public function onProductUpdated($id)
+    {
+        $this->log('onProductUpdated');
+        $this->log("product_id=$id");
+
+        $item = static::generateProductItem($id);
+        $this->log($item);
+        $res = $this->client->products->update($id, 'no-variants', $item);
+        $this->log('update product response: ' . $res);
     }
 
     /**
