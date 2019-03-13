@@ -30,48 +30,42 @@ class Plugin
     private $logger = null;
 
     /**
-     * Generation
-     *
-     * @param $file
-     * @param $client
-     * @param $options
-     * @return Plugin
-     */
-    public static function registerHooks($file, $client, $options)
-    {
-        return new static($file, $client, $options);
-    }
-
-    /**
      * Plugin constructor.
      * @param $file
      * @param $client
      * @param $options
      */
-    public function __construct($file, $client, $options)
+    public function __construct($client, $options)
     {
         $this->client = $client;
         if (array_key_exists('debug', $options) && $options['debug']) {
             $this->logger = new Log();
         }
-
-        register_activation_hook($file, [$this, 'onPluginActivated']);
     }
 
     /**
-     * Activation hook
+     * Sync data to datacue server
+     *
+     * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     * @throws \DataCue\Exceptions\RetryCountReachedException
+     * @throws \DataCue\Exceptions\UnauthorizedException
      */
-    public function onPluginActivated()
+    public function syncData()
     {
         $this->log('onPluginActivated');
 
-        if (!get_option('datacue_sync')) {
+        /* if (!get_option('datacue_sync')) {
             $this->batchCreateProducts();
             $this->batchCreateUsers();
             $this->batchCreateOrders();
 
             add_option('datacue_sync', '1');
-        }
+        } */
+
+        // Skip checking sync flag for now
+        $this->batchCreateProducts();
+        $this->batchCreateUsers();
+        $this->batchCreateOrders();
     }
 
     /**

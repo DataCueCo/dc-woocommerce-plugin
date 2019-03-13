@@ -2,6 +2,11 @@
 
 namespace DataCue\WooCommerce\Pages;
 
+use DataCue\Client;
+use DataCue\Exceptions\UnauthorizedException;
+use DataCue\Exceptions\RetryCountReachedException;
+use DataCue\WooCommerce\Common\Plugin;
+
 /**
  * Class SettingsPage
  * @package DataCue\WooCommerce\Pages
@@ -9,28 +14,39 @@ namespace DataCue\WooCommerce\Pages;
 class SettingsPage
 {
     /**
+     * Options from constructor
+     */
+    private $systemOptions;
+
+    /**
      * Holds the values to be used in the fields callbacks
      */
     private $options;
 
     /**
      * Generation
+     * @param $options
      * @return SettingsPage
      */
-    public static function registerPage()
+    public static function registerPage($options)
     {
-      return new static();
+      return new static($options);
     }
 
     /**
      * SettingsPage constructor.
+     * @param $options
      */
-    public function __construct()
+    public function __construct($options)
     {
         if (is_admin()) {
             add_action('admin_menu', [$this, 'addPluginPage']);
             add_action('admin_init', [$this, 'pageInit']);
+            add_action('add_option_datacue_options', [$this, 'optionsAdded'], 10, 2);
+            add_action('update_option_datacue_options', [$this, 'optionsUpdated'], 10, 2);
             add_filter('plugin_action_links_woocommerce-datacue/woocommerce-datacue.php', [$this, 'pluginActionLinks']);
+
+            $this->systemOptions = $options;
         }
     }
 
@@ -84,6 +100,30 @@ class SettingsPage
     }
 
     /**
+     * Option first added hook
+     * @param $name
+     * @param $value
+     * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     */
+    public function optionsAdded($name, $value)
+    {
+        $this->syncData($value['api_key'], $value['api_secret']);
+    }
+
+    /**
+     * Option updated hook
+     * @param $oldValue
+     * @param $newValue
+     * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     */
+    public function optionsUpdated($oldValue, $newValue)
+    {
+        if ($newValue['api_key'] !== $oldValue['api_key'] || $newValue['api_secret'] !== $oldValue['api_secret']) {
+            $this->syncData($newValue['api_key'], $newValue['api_secret']);
+        }
+    }
+
+    /**
      * Register and add settings
      */
     public function pageInit()
@@ -101,13 +141,6 @@ class SettingsPage
             'datacue-setting-admin'
         );
 
-        add_settings_section(
-            'data_cue_env',
-            'Environment Settings',
-            [$this, 'printEnvSection'],
-            'datacue-setting-admin'
-        );
-
         add_settings_field(
             'api_key',
             'Api Key',
@@ -122,14 +155,6 @@ class SettingsPage
             [$this, 'apiSecretCallback'],
             'datacue-setting-admin',
             'data_cue_base'
-        );
-
-        add_settings_field(
-            'server',
-            'Server',
-            [$this, 'serverCallback'],
-            'datacue-setting-admin',
-            'data_cue_env'
         );
     }
 
@@ -149,9 +174,6 @@ class SettingsPage
         if (isset($input['api_secret']))
             $newInput['api_secret'] = sanitize_text_field($input['api_secret']);
 
-        if (isset($input['server']))
-            $newInput['server'] = sanitize_text_field($input['server']);
-
         return $newInput;
     }
 
@@ -161,14 +183,6 @@ class SettingsPage
     public function printBaseSection()
     {
         print 'Enter your Api Key and Api Secret below:';
-    }
-
-    /**
-     * Print the Section text
-     */
-    public function printEnvSection()
-    {
-        print 'Enter your environment settings below:';
     }
 
     /**
@@ -194,17 +208,36 @@ class SettingsPage
     }
 
     /**
-     * Get the settings option and print one of its values
+     * Do sync data to datacue server
+     * @param $apiKey
+     * @param $apiSecret
+     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
-    public function serverCallback()
+    private function syncData($apiKey, $apiSecret)
     {
-        $productionChecked = !isset($this->options['server']) || esc_attr($this->options['server']) === 'production' ? 'checked' : '';
-        $developmentChecked = isset($this->options['server']) && esc_attr($this->options['server']) === 'development' ? 'checked' : '';
-
-        printf(
-            '<input type="radio" name="datacue_options[server]" value="production" %s /> Production ' .
-            '<input type="radio" name="datacue_options[server]" value="development" %s /> Development',
-            $productionChecked, $developmentChecked
+        $client = new Client(
+            $apiKey,
+            $apiSecret,
+            ['max_try_times' => $this->systemOptions['max_try_times']],
+            $this->systemOptions['env']
         );
+        $options = ['debug' => $this->systemOptions['debug']];
+        $instance = new Plugin($client, $options);
+
+        try {
+            $instance->syncData();
+        } catch (UnauthorizedException $e) {
+            add_settings_error(
+                'datacue_options',
+                'authorized_error',
+                'Incorrect API key or API secret, please make sure to copy/paste them <strong>exactly</strong> as you see from your dashboard.'
+            );
+        } catch (RetryCountReachedException $e) {
+            add_settings_error(
+                'datacue_options',
+                'sync_fail',
+                'The synchronization task failed, Please contact the administrator.'
+            );
+        }
     }
 }

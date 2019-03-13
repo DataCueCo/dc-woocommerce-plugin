@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: WooCommerce Datacue Plugin
- * Plugin URI: https://datacue.io/
- * Description: Datacue plugin for WooCommerce
+ * Plugin Name: Datacue for WooCommerce
+ * Plugin URI: https://datacue.co/
+ * Description: Improve sales by showing relevant content to your WooCommerce visitors with DataCue
  * Version: 1.0.0
  * Author: DataCue
- * Author URI: https://datacue.io/
+ * Author URI: https://datacue.co/
  * Text Domain: woocommerce datacue plugin
  *
  */
@@ -23,7 +23,10 @@ use DataCue\WooCommerce\Pages\SettingsPage;
 use DataCue\WooCommerce\Widgets\Banner;
 use DataCue\WooCommerce\Widgets\ProductCarousel;
 use DataCue\WooCommerce\Events\BrowserEvents;
-use DataCue\WooCommerce\Common\Plugin;
+
+const ENV = 'development'; // development or production
+const MAX_TRY_TIMES = 1;
+const DEBUG = true;
 
 $dataCueOptions = get_option('datacue_options');
 
@@ -31,18 +34,15 @@ if ($dataCueOptions) {
     $client = new \DataCue\Client(
         $dataCueOptions['api_key'],
         $dataCueOptions['api_secret'],
-        ['max_try_times' => 3],
-        array_key_exists('server', $dataCueOptions) && $dataCueOptions['server'] === 'development' ? 'development' : 'production'
+        ['max_try_times' => MAX_TRY_TIMES],
+        ENV
     );
-    $options = ['debug' => true];
+    $options = ['debug' => DEBUG];
 
     // hooks
     User::registerHooks($client, $options);
     Product::registerHooks($client, $options);
     Order::registerHooks($client, $options);
-
-    // plugin hooks
-    Plugin::registerHooks(__FILE__, $client, $options);
 
     // widgets
     Banner::registerWidget();
@@ -53,4 +53,8 @@ if ($dataCueOptions) {
 }
 
 // setting page
-SettingsPage::registerPage();
+SettingsPage::registerPage([
+    'max_try_times' => MAX_TRY_TIMES,
+    'env' => ENV,
+    'debug' => DEBUG,
+]);
