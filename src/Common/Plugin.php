@@ -3,10 +3,6 @@
 namespace DataCue\WooCommerce\Common;
 
 use DataCue\WooCommerce\Utils\Log;
-use DataCue\WooCommerce\Modules\Product;
-use DataCue\WooCommerce\Modules\Order;
-use WP_Query;
-use WP_User_Query;
 
 /**
  * Class Plugin
@@ -83,17 +79,24 @@ class Plugin
             'posts_per_page' => -1,
         ];
 
-        $postIdsList = array_chunk(get_posts($args), static::CHUNK_SIZE);
+        $res = $this->client->overview->getExistsIds('products');
+        $existsIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
+
+        $postIdsList = array_chunk(array_diff(get_posts($args), $existsIds), static::CHUNK_SIZE);
+
+        require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+
+        global $wpdb;
 
         foreach($postIdsList as $postIds) {
-            $data = [];
+            $this->log($postIds);
+            $job = json_encode([
+                'type' => 'products',
+                'ids' => $postIds,
+            ]);
 
-            foreach ($postIds as $id) {
-                $data[] = Product::generateProductItem($id, true);
-            }
-
-            $res = $this->client->products->batchCreate($data);
-            $this->log('batch create products response: ' . $res);
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (job, executed_at, created_at) values ('$job', NULL, NOW())";
+            dbDelta( $sql );
         }
     }
 
@@ -110,23 +113,20 @@ class Plugin
             'fields' => 'ids',
         ];
 
-        $userIdsList = array_chunk(get_users($args), static::CHUNK_SIZE);
+        $res = $this->client->overview->getExistsIds('users');
+        $existsIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
+
+        $userIdsList = array_chunk(array_diff(get_posts($args), $existsIds), static::CHUNK_SIZE);
 
         global $wpdb;
         foreach ($userIdsList as $userIds) {
-            $data = [];
+            $job = json_encode([
+                'type' => 'users',
+                'ids' => $userIds,
+            ]);
 
-            foreach ($userIds as $id) {
-                $user = $wpdb->get_row("SELECT `id` as `user_id`, `user_email` as `email`, DATE_FORMAT(`user_registered`, '%Y-%m-%dT%TZ') AS `timestamp` FROM `wp_users` where `id`=$id");
-                $metaInfo = $wpdb->get_results("SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=$id AND `meta_key` IN('first_name', 'last_name')");
-                array_map(function ($item) use ($user) {
-                    $user->{$item->meta_key} = $item->meta_value;
-                }, $metaInfo);
-                $data[] = $user;
-            }
-
-            $res = $this->client->users->batchCreate($data);
-            $this->log('batch create users response: ' . $res);
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (job, executed_at, created_at) values ('$job', NULL, NOW())";
+            dbDelta( $sql );
         }
     }
 
@@ -142,20 +142,24 @@ class Plugin
         $args = [
             'posts_per_page' => -1,
         ];
+        $currentIds = array_map(function ($order) {
+            return $order->get_id();
+        }, wc_get_orders($args));
 
-        $ordersList = array_chunk(wc_get_orders($args), static::CHUNK_SIZE);
+        $res = $this->client->overview->getExistsIds('orders');
+        $existsIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
 
-        foreach($ordersList as $orders) {
-            $data = [];
+        $ordersIdList = array_chunk(array_diff($currentIds, $existsIds), static::CHUNK_SIZE);
 
-            foreach ($orders as $order) {
-                if ($order->get_status !== 'cancelled') {
-                    $data[] = Order::generateOrderItem($order);
-                }
-            }
+        global $wpdb;
+        foreach($ordersIdList as $orderIds) {
+            $job = json_encode([
+                'type' => 'orders',
+                'ids' => $orderIds,
+            ]);
 
-            $res = $this->client->orders->batchCreate($data);
-            $this->log('batch create orders response: ' . $res);
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (job, executed_at, created_at) values ('$job', NULL, NOW())";
+            dbDelta( $sql );
         }
     }
 

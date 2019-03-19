@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Datacue for WooCommerce
+ * Plugin Name: DataCue for WooCommerce
  * Plugin URI: https://datacue.co/
  * Description: Improve sales by showing relevant content to your WooCommerce visitors with DataCue
  * Version: 1.0.0
@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/vendor/autoload.php';
 
+use DataCue\Client;
 use DataCue\WooCommerce\Modules\User;
 use DataCue\WooCommerce\Modules\Product;
 use DataCue\WooCommerce\Modules\Order;
@@ -23,6 +24,8 @@ use DataCue\WooCommerce\Pages\SettingsPage;
 use DataCue\WooCommerce\Widgets\Banner;
 use DataCue\WooCommerce\Widgets\ProductCarousel;
 use DataCue\WooCommerce\Events\BrowserEvents;
+use DataCue\WooCommerce\Common\Activator;
+use DataCue\WooCommerce\Common\Schedule;
 
 const ENV = 'development'; // development or production
 const MAX_TRY_TIMES = 1;
@@ -31,7 +34,7 @@ const DEBUG = true;
 $dataCueOptions = get_option('datacue_options');
 
 if ($dataCueOptions) {
-    $client = new \DataCue\Client(
+    $client = new Client(
         $dataCueOptions['api_key'],
         $dataCueOptions['api_secret'],
         ['max_try_times' => MAX_TRY_TIMES],
@@ -43,6 +46,12 @@ if ($dataCueOptions) {
     User::registerHooks($client, $options);
     Product::registerHooks($client, $options);
     Order::registerHooks($client, $options);
+
+    // activation hooks
+    Activator::registerHooks(__FILE__, $client, $options);
+
+    // schedule hooks
+    Schedule::registerHooks($client, $options);
 
     // widgets
     Banner::registerWidget();
