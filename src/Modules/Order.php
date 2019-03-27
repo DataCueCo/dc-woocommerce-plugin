@@ -2,6 +2,7 @@
 
 namespace DataCue\WooCommerce\Modules;
 
+use DataCue\Exceptions\RetryCountReachedException;
 use WC_Order_Item_Product;
 
 /**
@@ -23,11 +24,15 @@ class Order extends Base
             $order = wc_get_order($order);
         }
 
+        if (count($order->get_items()) === 0) {
+            return null;
+        }
+
         $item = [
             'order_id' => $order->get_id(),
             'user_id' => $order->get_user_id(),
             'cart' => [],
-            'timestamp' => date('c', $order->get_date_created()->getTimestamp()),
+            'timestamp' => date('c', is_null($order->get_date_created()) ? time() : $order->get_date_created()->getTimestamp()),
         ];
 
         foreach ($order->get_items() as $one) {
@@ -53,8 +58,8 @@ class Order extends Base
     {
         parent::__construct($client, $options);
 
-        add_action('woocommerce_thankyou', [$this, 'onOrderCreated']);
-        add_action('woocommerce_cancelled_order', [$this, 'onOrderCancelled']);
+        add_action('save_post_shop_order', [$this, 'onOrderSaved'], 10, 3);
+        add_action('wc-cancelled_shop_order', [$this, 'onOrderCancelled'], 10, 2);
         add_action('before_delete_post', [$this, 'onOrderDeleted']);
     }
 
@@ -63,13 +68,24 @@ class Order extends Base
      * @param $orderId
      * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
-    public function onOrderCreated($orderId)
+    public function onOrderSaved($id, $post, $update)
     {
-        $this->log("onOrderCreated");
+        $this->log("onOrderSaved");
 
-        $item = static::generateOrderItem($orderId);
-        $res = $this->client->orders->create($item);
-        $this->log('create order response: ', $res);
+        try {
+            $res = $this->client->overview->orders();
+            $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
+            if (!in_array($id, $existingIds)) {
+                $this->log('can create order');
+                $item = static::generateOrderItem($id);
+                if (!is_null($item)) {
+                    $res = $this->client->orders->create($item);
+                    $this->log('create order response: ', $res);
+                }
+            }
+        } catch (RetryCountReachedException $e) {
+            $this->log($e->errorMessage());
+        }
     }
 
     /**
@@ -77,11 +93,15 @@ class Order extends Base
      * @param $id
      * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
-    public function onOrderCancelled($id)
+    public function onOrderCancelled($id, $post)
     {
         $this->log('onOrderCancelled');
-        $res = $this->client->orders->cancel($id);
-        $this->log('cancel order response: ', $res);
+        try {
+            $res = $this->client->orders->cancel($id);
+            $this->log('cancel order response: ', $res);
+        } catch (RetryCountReachedException $e) {
+            $this->log($e->errorMessage());
+        }
     }
 
     /**
@@ -95,8 +115,12 @@ class Order extends Base
 
         if($post_type === 'shop_order') {
             $this->log('onOrderDeleted');
-            $res = $this->client->orders->delete($id);
-            $this->log('delete order response: ', $res);
+            try {
+                $res = $this->client->orders->delete($id);
+                $this->log('delete order response: ', $res);
+            } catch (RetryCountReachedException $e) {
+                $this->log($e->errorMessage());
+            }
         }
     }
 }

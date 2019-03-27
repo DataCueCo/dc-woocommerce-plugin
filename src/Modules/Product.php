@@ -2,6 +2,8 @@
 
 namespace DataCue\WooCommerce\Modules;
 
+use DataCue\Exceptions\RetryCountReachedException;
+
 /**
  * Class Product
  * @package DataCue\WooCommerce\Modules
@@ -14,7 +16,7 @@ class Product extends Base
      * @param $withId bool
      * @return array
      */
-    public static function generateProductItem($id, $withId = false)
+    public static function generateProductItem($id, $withId = false, $isVariant = false)
     {
         $product = wc_get_product($id);
 
@@ -25,6 +27,7 @@ class Product extends Base
             'full_price' => (float)$product->get_regular_price(),
             'link' => get_permalink($product->get_id()),
             'available' => $product->get_status() === 'publish',
+            'description' => $product->get_description(),
         ];
 
         // get photo url
@@ -44,24 +47,49 @@ class Product extends Base
         // get categories
         $item['categories'] = [];
         $item['main_category'] = '';
-        $categorieIds = $product->get_category_ids();
-        if (count($categorieIds) > 0) {
-            $parentCategoryIds = get_ancestors($categorieIds[0], 'product_cat');
-            if (count($parentCategoryIds) > 0) {
-                $category = get_term($parentCategoryIds[0], 'product_cat');
-                $item['categories'][] = $category->name;
+
+        if ($isVariant) {
+            $parentProduct = wc_get_product($product->get_parent_id());
+            $categoryIds = $parentProduct->get_category_ids();
+            if (count($categoryIds) > 0) {
+                for ($i = 0; $i < count($categoryIds); $i++) {
+                    $category = get_term($categoryIds[$i], 'product_cat');
+                    $item['categories'][] = $category->name;
+                    if ($i === 0) {
+                        $item['main_category'] = $category->name;
+                    }
+                }
             }
-            $category = get_term($categorieIds[0], 'product_cat');
-            $item['categories'][] = $category->name;
-            $item['main_category'] = $category->name;
+        } else {
+            $categoryIds = $product->get_category_ids();
+            if (count($categoryIds) > 0) {
+                for ($i = 0; $i < count($categoryIds); $i++) {
+                    $category = get_term($categoryIds[$i], 'product_cat');
+                    $item['categories'][] = $category->name;
+                    if ($i === 0) {
+                        $item['main_category'] = $category->name;
+                    }
+                }
+            }
         }
 
         if ($withId) {
-            $item['product_id'] = $product->get_id();
-            $item['variant_id'] = 'no-variants';
+            if ($isVariant) {
+                $item['product_id'] = $product->get_parent_id();
+                $item['variant_id'] = $product->get_id();
+            } else {
+                $item['product_id'] = $product->get_id();
+                $item['variant_id'] = 'no-variants';
+            }
         }
 
         return $item;
+    }
+
+    public static function getParentProductId($id)
+    {
+        $product = wc_get_product($id);
+        return $product->get_parent_id();
     }
 
     /**
@@ -75,6 +103,8 @@ class Product extends Base
 
         add_action('save_post_product', [$this, 'onProductSaved'], 10, 3);
         add_action('woocommerce_update_product', [$this, 'onProductUpdated']);
+        add_action('woocommerce_new_product_variation', [$this, 'onVariantCreated']);
+        add_action('woocommerce_update_product_variation', [$this, 'onVariantUpdated']);
         add_action('delete_post', [$this, 'onProductDeleted']);
     }
 
@@ -93,8 +123,12 @@ class Product extends Base
 
             $item = static::generateProductItem($id, true);
             $this->log($item);
-            $res = $this->client->products->create($item);
-            $this->log('create product response: ' . $res);
+            try {
+                $res = $this->client->products->create($item);
+                $this->log('create product response: ' . $res);
+            } catch (RetryCountReachedException $e) {
+                $this->log($e->errorMessage());
+            }
         }
     }
 
@@ -110,21 +144,81 @@ class Product extends Base
 
         $item = static::generateProductItem($id);
         $this->log($item);
-        $res = $this->client->products->update($id, 'no-variants', $item);
-        $this->log('update product response: ' . $res);
+        try {
+            $res = $this->client->products->update($id, 'no-variants', $item);
+            $this->log('update product response: ' . $res);
+        } catch (RetryCountReachedException $e) {
+            $this->log($e->errorMessage());
+        }
     }
 
     /**
-     * Product deleted callback
+     * Variant created callback
+     * @param $id
+     * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     */
+    public function onVariantCreated($id)
+    {
+        $this->log('onVariantCreated');
+        $this->log("variant_id=$id");
+
+        $item = static::generateProductItem($id, true, true);
+        $this->log($item);
+        try {
+            $res = $this->client->products->create($item);
+            $this->log('create variant response: ' . $res);
+        } catch (RetryCountReachedException $e) {
+            $this->log($e->errorMessage());
+        }
+    }
+
+    /**
+     * Variant updated callback
+     * @param $id
+     * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     */
+    public function onVariantUpdated($id)
+    {
+        $this->log('onVariantUpdated');
+        $this->log("variant_id=$id");
+
+        $item = static::generateProductItem($id, false, true);
+        $this->log($item);
+        try {
+            $res = $this->client->products->update(static::getParentProductId($id), $id, $item);
+            $this->log('update product response: ' . $res);
+        } catch (RetryCountReachedException $e) {
+            $this->log($e->errorMessage());
+        }
+    }
+
+    /**
+     * Product/Variant deleted callback
      * @param $id
      * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function onProductDeleted($id)
     {
-        if (wc_get_product($id)) {
+        $product = wc_get_product($id);
+        if ($product) {
             $this->log('onProductDeleted');
-            $res = $this->client->products->delete($id, 'no-variants');
-            $this->log('delete product response: ' . $res);
+            if ($product->get_parent_id() === 0) {
+                $this->log('is product');
+                try {
+                    $res = $this->client->products->delete($id);
+                    $this->log('delete product response: ' . $res);
+                } catch (RetryCountReachedException $e) {
+                    $this->log($e->errorMessage());
+                }
+            } else {
+                $this->log('is variant, and parent id = ' . $product->get_parent_id());
+                try {
+                    $res = $this->client->products->delete($product->get_parent_id(), $id);
+                    $this->log('delete variant response: ' . $res);
+                } catch (RetryCountReachedException $e) {
+                    $this->log($e->errorMessage());
+                }
+            }
         }
     }
 }

@@ -2,6 +2,8 @@
 
 namespace DataCue\WooCommerce\Modules;
 
+use DataCue\Exceptions\RetryCountReachedException;
+
 /**
  * Class User
  * @package DataCue\WooCommerce\Modules
@@ -37,8 +39,12 @@ class User extends Base
             $user->{$item->meta_key} = $item->meta_value;
         }, $metaInfo);
 
-        $res = $this->client->users->create($user);
-        $this->log('create user response: ' . $res);
+        try {
+            $res = $this->client->users->create($user);
+            $this->log('create user response: ' . $res);
+        } catch (RetryCountReachedException $e) {
+            $this->log($e->errorMessage());
+        }
     }
 
     /**
@@ -56,8 +62,12 @@ class User extends Base
             $user->{$item->meta_key} = $item->meta_value;
         }, $metaInfo);
 
-        $res = $this->client->users->update($userId, $user);
-        $this->log('update user response: ' . $res);
+        try {
+            $res = $this->client->users->update($userId, $user);
+            $this->log('update user response: ' . $res);
+        } catch (RetryCountReachedException $e) {
+            $this->log($e->errorMessage());
+        }
     }
 
     /**
@@ -68,7 +78,12 @@ class User extends Base
     public function onUserDeleted($userId)
     {
         $this->log('onUserDeleted');
-        $res = $this->client->users->delete($userId);
-        $this->log('delete user response: ' . $res);
+
+        try {
+            $res = $this->client->users->delete($userId);
+            $this->log('delete user response: ' . $res);
+        } catch (RetryCountReachedException $e) {
+            $this->log($e->errorMessage());
+        }
     }
 }

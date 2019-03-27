@@ -47,9 +47,7 @@ class BrowserEvents
      */
     public function onHead()
     {
-        if (is_shop()) {
-            $this->onHomePage();
-        } else if (is_product()) {
+        if (is_product()) {
             $this->onProductPage();
         } else if (is_product_category()) {
             $this->onCategoryPage();
@@ -59,6 +57,8 @@ class BrowserEvents
             $this->onSearchPage();
         } else if (is_404()) {
             $this->on404Page();
+        } else if (is_shop()) {
+            $this->onHomePage();
         }
     }
 
