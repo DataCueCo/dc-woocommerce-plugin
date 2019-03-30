@@ -23,19 +23,19 @@ class BrowserEvents
      * @param $dataCueOptions
      * @return BrowserEvents
      */
-    public static function registerHooks($dataCueOptions)
+    public static function registerHooks($dataCueOptions, $env)
     {
-        return new static($dataCueOptions);
+        return new static($dataCueOptions, $env);
     }
 
     /**
      * BrowserEvents constructor.
      * @param $dataCueOptions
      */
-    public function __construct($dataCueOptions)
+    public function __construct($dataCueOptions, $env)
     {
         $this->dataCueOptions = $dataCueOptions;
-        if ($dataCueOptions['server'] === 'development') {
+        if ($env === 'development') {
             $this->dataCueConfigOptions = '{_staging: true}';
         }
 
@@ -47,7 +47,9 @@ class BrowserEvents
      */
     public function onHead()
     {
-        if (is_product()) {
+        if (is_checkout()) {
+            $this->onCheckoutPage();
+        } else if (is_product()) {
             $this->onProductPage();
         } else if (is_product_category()) {
             $this->onCategoryPage();
@@ -185,6 +187,60 @@ window.datacueConfig = {
 </script>
 <script src="https://cdn.datacue.co/js/datacue.js"></script>
 <script src="https://cdn.datacue.co/js/datacue-storefront.js"></script>
+EOT;
+    }
+
+    /**
+     * For checkout page
+     */
+    private function onCheckoutPage()
+    {
+        $currency = get_woocommerce_currency();
+        $cart = [];
+        $items = WC()->cart->get_cart();
+        foreach($items as $key => $values) {
+            $item = [
+                'product_id' => $values['product_id'],
+                'variant_id' => $values['variation_id'] === 0 ? 'no-variants' : $values['variation_id'],
+                'quantity' => $values['quantity'],
+                'currency' => $currency,
+            ];
+
+            if ($values['variation_id'] > 0) {
+                $variant = wc_get_product($values['variation_id']);
+                $item['unit_price'] = $variant->get_price();
+            } else {
+                $product = wc_get_product($values['product_id']);
+                $item['unit_price'] = $product->get_price();
+            }
+
+            $cart[] = $item;
+        }
+        $cartStr = json_encode($cart);
+        $cartLink = wc_get_cart_url();
+
+        echo <<<EOT
+<script>
+window.datacueConfig = {
+  api_key: '{$this->dataCueOptions['api_key']}',
+  user_id: {$this->getUserId()},
+  options: {$this->dataCueConfigOptions},
+  page_type: 'checkout'
+};
+</script>
+<script src="https://cdn.datacue.co/js/datacue.js"></script>
+<script src="https://cdn.datacue.co/js/datacue-storefront.js"></script>
+<script>
+window.datacue.identify({$this->getUserId()});
+
+// track the event
+window.datacue.track({
+  type: 'checkout',
+  subtype: 'started',
+  cart: JSON.parse('$cartStr'),
+  cart_link:'$cartLink'
+});
+</script>
 EOT;
     }
 
