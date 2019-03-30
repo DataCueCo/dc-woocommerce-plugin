@@ -50,13 +50,15 @@ class Plugin
     {
         $this->log('onPluginActivated');
 
-        /* if (!get_option('datacue_sync')) {
-            $this->batchCreateProducts();
-            $this->batchCreateUsers();
-            $this->batchCreateOrders();
+        // Check api_key&api_secret
+        $this->client->overview->all();
 
-            add_option('datacue_sync', '1');
-        } */
+        // Check if it has been initialized
+        global $wpdb;
+        $row = $wpdb->get_row("SELECT * FROM `{$wpdb->prefix}datacue_queue` WHERE `action` = 'init' LIMIT 1");
+        if ($row) {
+            return;
+        }
 
         // Skip checking sync flag for now
         $this->batchCreateProducts();

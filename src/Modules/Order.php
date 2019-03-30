@@ -24,7 +24,7 @@ class Order extends Base
             $order = wc_get_order($order);
         }
 
-        if (count($order->get_items()) === 0) {
+        if (count($order->get_items()) === 0 || $order->get_customer_id() === 0) {
             return null;
         }
 
