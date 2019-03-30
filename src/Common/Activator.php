@@ -71,7 +71,11 @@ class Activator
 
         $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}datacue_queue (
 				id bigint(20) NOT NULL AUTO_INCREMENT,
-                job text NOT NULL,
+				`action` varchar(32) NOT NULL,
+				model varchar(32) NOT NULL,
+				model_id int(11) DEFAULT NULL,
+                job mediumtext NOT NULL,
+                status int(11) NOT NULL DEFAULT 0,
                 executed_at datetime DEFAULT NULL,
                 created_at datetime NOT NULL,
                 PRIMARY KEY  (id)
