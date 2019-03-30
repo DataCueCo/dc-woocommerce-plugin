@@ -40,8 +40,7 @@ class User extends Base
         }, $metaInfo);
 
         try {
-            $res = $this->client->users->create($user);
-            $this->log('create user response: ' . $res);
+            $this->addTaskToQueue('users', 'create', $userId, ['item' => $user]);
         } catch (RetryCountReachedException $e) {
             $this->log($e->errorMessage());
         }
@@ -63,8 +62,14 @@ class User extends Base
         }, $metaInfo);
 
         try {
-            $res = $this->client->users->update($userId, $user);
-            $this->log('update user response: ' . $res);
+            if ($task = $this->findAliveTask('users', 'create', $userId)) {
+                $user->user_id = $userId;
+                $this->updateTask($task->id, ['item' => $user]);
+            } elseif ($task = $this->findAliveTask('users', 'update', $userId)) {
+                $this->updateTask($task->id, ['userId' => $userId, 'item' => $user]);
+            } else {
+                $this->addTaskToQueue('users', 'update', $userId, ['userId' => $userId, 'item' => $user]);
+            }
         } catch (RetryCountReachedException $e) {
             $this->log($e->errorMessage());
         }
@@ -80,8 +85,7 @@ class User extends Base
         $this->log('onUserDeleted');
 
         try {
-            $res = $this->client->users->delete($userId);
-            $this->log('delete user response: ' . $res);
+            $this->addTaskToQueue('users', 'delete', $userId, ['userId' => $userId]);
         } catch (RetryCountReachedException $e) {
             $this->log($e->errorMessage());
         }

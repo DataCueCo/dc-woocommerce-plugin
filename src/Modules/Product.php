@@ -14,6 +14,7 @@ class Product extends Base
      * Generate product item for DataCue
      * @param $id int Product ID
      * @param $withId bool
+     * @param $isVariant bool
      * @return array
      */
     public static function generateProductItem($id, $withId = false, $isVariant = false)
@@ -124,8 +125,7 @@ class Product extends Base
             $item = static::generateProductItem($id, true);
             $this->log($item);
             try {
-                $res = $this->client->products->create($item);
-                $this->log('create product response: ' . $res);
+                $this->addTaskToQueue('products', 'create', $id, ['item' => $item]);
             } catch (RetryCountReachedException $e) {
                 $this->log($e->errorMessage());
             }
@@ -142,11 +142,17 @@ class Product extends Base
         $this->log('onProductUpdated');
         $this->log("product_id=$id");
 
-        $item = static::generateProductItem($id);
-        $this->log($item);
         try {
-            $res = $this->client->products->update($id, 'no-variants', $item);
-            $this->log('update product response: ' . $res);
+            if ($task = $this->findAliveTask('products', 'create', $id)) {
+                $item = static::generateProductItem($id, true);
+                $this->updateTask($task->id, ['item' => $item]);
+            } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
+                $item = static::generateProductItem($id);
+                $this->updateTask($task->id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
+            } else {
+                $item = static::generateProductItem($id);
+                $this->addTaskToQueue('products', 'update', $id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
+            }
         } catch (RetryCountReachedException $e) {
             $this->log($e->errorMessage());
         }
@@ -165,8 +171,7 @@ class Product extends Base
         $item = static::generateProductItem($id, true, true);
         $this->log($item);
         try {
-            $res = $this->client->products->create($item);
-            $this->log('create variant response: ' . $res);
+            $this->addTaskToQueue('products', 'create', $id, ['item' => $item]);
         } catch (RetryCountReachedException $e) {
             $this->log($e->errorMessage());
         }
@@ -187,6 +192,17 @@ class Product extends Base
         try {
             $res = $this->client->products->update(static::getParentProductId($id), $id, $item);
             $this->log('update product response: ' . $res);
+
+            if ($task = $this->findAliveTask('products', 'create', $id)) {
+                $item = static::generateProductItem($id, true, true);
+                $this->updateTask($task->id, ['item' => $item]);
+            } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
+                $item = static::generateProductItem($id);
+                $this->updateTask($task->id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
+            } else {
+                $item = static::generateProductItem($id);
+                $this->addTaskToQueue('products', 'update', $id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
+            }
         } catch (RetryCountReachedException $e) {
             $this->log($e->errorMessage());
         }
@@ -205,16 +221,14 @@ class Product extends Base
             if ($product->get_parent_id() === 0) {
                 $this->log('is product');
                 try {
-                    $res = $this->client->products->delete($id);
-                    $this->log('delete product response: ' . $res);
+                    $this->addTaskToQueue('products', 'delete', $id, ['productId' => $id, 'variantId' => 'no-variants']);
                 } catch (RetryCountReachedException $e) {
                     $this->log($e->errorMessage());
                 }
             } else {
                 $this->log('is variant, and parent id = ' . $product->get_parent_id());
                 try {
-                    $res = $this->client->products->delete($product->get_parent_id(), $id);
-                    $this->log('delete variant response: ' . $res);
+                    $this->addTaskToQueue('products', 'delete', $id, ['productId' => $product->get_parent_id(), 'variantId' => $id]);
                 } catch (RetryCountReachedException $e) {
                     $this->log($e->errorMessage());
                 }

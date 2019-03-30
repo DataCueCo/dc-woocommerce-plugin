@@ -91,11 +91,10 @@ class Plugin
         foreach($postIdsList as $postIds) {
             $this->log($postIds);
             $job = json_encode([
-                'type' => 'products',
                 'ids' => $postIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (job, executed_at, created_at) values ('$job', NULL, NOW())";
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('products', 'init', '$job', NULL, NOW())";
             dbDelta( $sql );
         }
     }
@@ -121,11 +120,10 @@ class Plugin
         global $wpdb;
         foreach ($userIdsList as $userIds) {
             $job = json_encode([
-                'type' => 'users',
                 'ids' => $userIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (job, executed_at, created_at) values ('$job', NULL, NOW())";
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('users', 'init', '$job', NULL, NOW())";
             dbDelta( $sql );
         }
     }
@@ -154,11 +152,10 @@ class Plugin
         global $wpdb;
         foreach($ordersIdList as $orderIds) {
             $job = json_encode([
-                'type' => 'orders',
                 'ids' => $orderIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (job, executed_at, created_at) values ('$job', NULL, NOW())";
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('orders', 'init', '$job', NULL, NOW())";
             dbDelta( $sql );
         }
     }

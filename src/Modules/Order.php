@@ -30,7 +30,7 @@ class Order extends Base
 
         $item = [
             'order_id' => $order->get_id(),
-            'user_id' => $order->get_user_id(),
+            'user_id' => $order->get_customer_id(),
             'cart' => [],
             'timestamp' => date('c', is_null($order->get_date_created()) ? time() : $order->get_date_created()->getTimestamp()),
         ];
@@ -73,14 +73,11 @@ class Order extends Base
         $this->log("onOrderSaved");
 
         try {
-            $res = $this->client->overview->orders();
-            $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
-            if (!in_array($id, $existingIds)) {
+            if (!$this->findTask('orders', 'create', $id)) {
                 $this->log('can create order');
                 $item = static::generateOrderItem($id);
                 if (!is_null($item)) {
-                    $res = $this->client->orders->create($item);
-                    $this->log('create order response: ', $res);
+                    $this->addTaskToQueue('orders', 'create', $id, ['item' => $item]);
                 }
             }
         } catch (RetryCountReachedException $e) {
@@ -97,8 +94,7 @@ class Order extends Base
     {
         $this->log('onOrderCancelled');
         try {
-            $res = $this->client->orders->cancel($id);
-            $this->log('cancel order response: ', $res);
+            $this->addTaskToQueue('orders', 'cancel', $id, ['jobId' => $id]);
         } catch (RetryCountReachedException $e) {
             $this->log($e->errorMessage());
         }
@@ -116,8 +112,7 @@ class Order extends Base
         if($post_type === 'shop_order') {
             $this->log('onOrderDeleted');
             try {
-                $res = $this->client->orders->delete($id);
-                $this->log('delete order response: ', $res);
+                $this->addTaskToQueue('orders', 'delete', $id, ['jobId' => $id]);
             } catch (RetryCountReachedException $e) {
                 $this->log($e->errorMessage());
             }
