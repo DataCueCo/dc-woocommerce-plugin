@@ -5,20 +5,20 @@ namespace DataCue\WooCommerce\Modules;
 use DataCue\Exceptions\RetryCountReachedException;
 
 /**
- * Class User
+ * Class Event
  * @package DataCue\WooCommerce\Modules
  */
 class Event extends Base
 {
     /**
-     * User constructor.
+     * Event constructor.
      * @param $client
      * @param array $options
      */
     public function __construct($client, array $options = [])
     {
         parent::__construct($client, $options);
-        
+
         add_action('woocommerce_after_cart_item_quantity_update', [$this, 'onCartUpdated']);
         add_action('woocommerce_cart_item_removed', [$this, 'onCartUpdated']);
         add_action('woocommerce_cart_item_restored', [$this, 'onCartUpdated']);
@@ -26,6 +26,10 @@ class Event extends Base
         add_action('woocommerce_add_to_cart', [$this, 'onCartUpdated']);
     }
 
+    /**
+     * Cart updated hook
+     * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     */
     public function onCartUpdated()
     {
         $currency = get_woocommerce_currency();
