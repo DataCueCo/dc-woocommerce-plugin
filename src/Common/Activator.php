@@ -45,6 +45,7 @@ class Activator
             $this->logger = new Log();
         }
         register_activation_hook($file, [$this, 'onPluginActivated']);
+        register_deactivation_hook($file, [$this, 'onPluginDeactivated']);
     }
 
     /**
@@ -54,6 +55,20 @@ class Activator
     {
         $this->log('onPluginActivated');
         $this->createQueueTable();
+    }
+
+    /**
+     * Deletion hook
+     */
+    public function onPluginDeactivated()
+    {
+        $this->log('onPluginDeactivated');
+
+        require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+
+        global $wpdb;
+        $sql = "DROP TABLE IF EXISTS {$wpdb->prefix}datacue_queue;";
+        $wpdb->query($sql);
     }
 
     /**
