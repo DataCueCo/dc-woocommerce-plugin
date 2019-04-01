@@ -24,7 +24,7 @@ class Order extends Base
             $order = wc_get_order($order);
         }
 
-        if (count($order->get_items()) === 0 || $order->get_customer_id() === 0) {
+        if (count($order->get_items()) === 0) {
             return null;
         }
 
@@ -58,7 +58,8 @@ class Order extends Base
     {
         parent::__construct($client, $options);
 
-        add_action('save_post_shop_order', [$this, 'onOrderSaved'], 10, 3);
+        add_action('woocommerce_process_shop_order_meta', [$this, 'onOrderSaved'], 10, 1);
+        add_action('woocommerce_thankyou', [$this, 'onOrderSaved'], 10, 1);
         add_action('wc-cancelled_shop_order', [$this, 'onOrderCancelled'], 10, 2);
         add_action('before_delete_post', [$this, 'onOrderDeleted']);
     }
@@ -68,16 +69,25 @@ class Order extends Base
      * @param $orderId
      * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
-    public function onOrderSaved($id, $post, $update)
+    public function onOrderSaved($id)
     {
         $this->log("onOrderSaved");
 
         try {
-            if (!$this->findTask('orders', 'create', $id)) {
-                $this->log('can create order');
-                $item = static::generateOrderItem($id);
-                if (!is_null($item)) {
-                    $this->addTaskToQueue('orders', 'create', $id, ['item' => $item]);
+            $order = wc_get_order($id);
+            $this->log($order->get_status());
+            if ($order->get_status() === 'cancelled') {
+                if (!$this->findTask('orders', 'cancel', $id)) {
+                    $this->log('can cancel order');
+                    $this->addTaskToQueue('orders', 'cancel', $id, ['orderId' => $id]);
+                }
+            } else {
+                if (!$this->findTask('orders', 'create', $id)) {
+                    $this->log('can create order');
+                    $item = static::generateOrderItem($order);
+                    if (!is_null($item)) {
+                        $this->addTaskToQueue('orders', 'create', $id, ['item' => $item]);
+                    }
                 }
             }
         } catch (RetryCountReachedException $e) {
@@ -94,7 +104,7 @@ class Order extends Base
     {
         $this->log('onOrderCancelled');
         try {
-            $this->addTaskToQueue('orders', 'cancel', $id, ['jobId' => $id]);
+            $this->addTaskToQueue('orders', 'cancel', $id, ['orderId' => $id]);
         } catch (RetryCountReachedException $e) {
             $this->log($e->errorMessage());
         }
@@ -112,7 +122,7 @@ class Order extends Base
         if($post_type === 'shop_order') {
             $this->log('onOrderDeleted');
             try {
-                $this->addTaskToQueue('orders', 'delete', $id, ['jobId' => $id]);
+                $this->addTaskToQueue('orders', 'delete', $id, ['orderId' => $id]);
             } catch (RetryCountReachedException $e) {
                 $this->log($e->errorMessage());
             }

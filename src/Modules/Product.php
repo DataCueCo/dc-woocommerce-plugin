@@ -21,18 +21,24 @@ class Product extends Base
     {
         $product = wc_get_product($id);
 
+        if ($isVariant) {
+            $parentProduct = wc_get_product($product->get_parent_id());
+        } else {
+            $parentProduct = null;
+        }
+
         // generate product item for DataCue
         $item = [
-            'name' => $product->get_name(),
+            'name' => $isVariant ? $parentProduct->get_name() : $product->get_name(),
             'price' => $product->get_sale_price() ? (float)$product->get_sale_price() : (float)$product->get_regular_price(),
             'full_price' => (float)$product->get_regular_price(),
             'link' => get_permalink($product->get_id()),
             'available' => $product->get_status() === 'publish',
-            'description' => $product->get_description(),
+            'description' => $isVariant ? $parentProduct->get_description() : $product->get_description(),
         ];
 
         // get photo url
-        $imageId = $product->get_image_id();
+        $imageId = $isVariant ? $parentProduct->get_image_id() : $product->get_image_id();
         if ($imageId) {
             $item['photo_url'] = wp_get_attachment_image_url($imageId);
         } else {
@@ -50,26 +56,16 @@ class Product extends Base
         $item['main_category'] = '';
 
         if ($isVariant) {
-            $parentProduct = wc_get_product($product->get_parent_id());
             $categoryIds = $parentProduct->get_category_ids();
-            if (count($categoryIds) > 0) {
-                for ($i = 0; $i < count($categoryIds); $i++) {
-                    $category = get_term($categoryIds[$i], 'product_cat');
-                    $item['categories'][] = $category->name;
-                    if ($i === 0) {
-                        $item['main_category'] = $category->name;
-                    }
-                }
-            }
         } else {
             $categoryIds = $product->get_category_ids();
-            if (count($categoryIds) > 0) {
-                for ($i = 0; $i < count($categoryIds); $i++) {
-                    $category = get_term($categoryIds[$i], 'product_cat');
-                    $item['categories'][] = $category->name;
-                    if ($i === 0) {
-                        $item['main_category'] = $category->name;
-                    }
+        }
+        if (count($categoryIds) > 0) {
+            for ($i = 0; $i < count($categoryIds); $i++) {
+                $category = get_term($categoryIds[$i], 'product_cat');
+                $item['categories'][] = $category->name;
+                if ($i === 0) {
+                    $item['main_category'] = $category->name;
                 }
             }
         }
@@ -156,6 +152,13 @@ class Product extends Base
         } catch (RetryCountReachedException $e) {
             $this->log($e->errorMessage());
         }
+
+        // update variants belonging the current product
+        $product = wc_get_product($id);
+        $variants = $product->get_children();
+        foreach ($variants as $variantId) {
+            $this->onVariantUpdated($variantId);
+        }
     }
 
     /**
@@ -190,17 +193,11 @@ class Product extends Base
         $item = static::generateProductItem($id, false, true);
         $this->log($item);
         try {
-            $res = $this->client->products->update(static::getParentProductId($id), $id, $item);
-            $this->log('update product response: ' . $res);
-
             if ($task = $this->findAliveTask('products', 'create', $id)) {
-                $item = static::generateProductItem($id, true, true);
                 $this->updateTask($task->id, ['item' => $item]);
             } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
-                $item = static::generateProductItem($id);
                 $this->updateTask($task->id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
             } else {
-                $item = static::generateProductItem($id);
                 $this->addTaskToQueue('products', 'update', $id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
             }
         } catch (RetryCountReachedException $e) {

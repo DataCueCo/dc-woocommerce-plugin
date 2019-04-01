@@ -75,16 +75,21 @@ class Plugin
     {
         $this->log('batchCreateProducts');
 
-        $args = [
+        $posts = get_posts([
             'post_type' => 'product',
             'fields' => 'ids',
             'posts_per_page' => -1,
-        ];
+        ]);
+        $variants = get_posts([
+            'post_type' => 'product_variation',
+            'fields' => 'ids',
+            'posts_per_page' => -1,
+        ]);
 
         $res = $this->client->overview->products();
         $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
 
-        $postIdsList = array_chunk(array_diff(get_posts($args), $existingIds), static::CHUNK_SIZE);
+        $postIdsList = array_chunk(array_diff(array_merge($posts, $variants), $existingIds), static::CHUNK_SIZE);
 
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 
@@ -117,7 +122,7 @@ class Plugin
         $res = $this->client->overview->users();
         $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
 
-        $userIdsList = array_chunk(array_diff(get_posts($args), $existingIds), static::CHUNK_SIZE);
+        $userIdsList = array_chunk(array_diff(get_users($args), $existingIds), static::CHUNK_SIZE);
 
         global $wpdb;
         foreach ($userIdsList as $userIds) {

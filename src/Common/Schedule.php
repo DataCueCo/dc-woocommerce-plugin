@@ -188,11 +188,15 @@ class Schedule
         } elseif ($model === 'orders') {
             // batch create orders
             $data = [];
-            foreach ($job->ids as $order) {
-                if ($order->get_status !== 'cancelled') {
-                    $data[] = Order::generateOrderItem($order);
+            foreach ($job->ids as $id) {
+                $order = wc_get_order($id);
+                if ($order->get_status() !== 'cancelled') {
+                    if ($item = Order::generateOrderItem($order)) {
+                        $data[] = $item;
+                    }
                 }
             }
+            $this->log($data);
             $res = $this->client->orders->batchCreate($data);
             $this->log('batch create orders response: ' . $res);
         }
@@ -262,6 +266,11 @@ class Schedule
     {
         switch ($action) {
             case 'create':
+                if ($job->item->user_id === 0) {
+                    $order = Order::generateOrderItem($job->item->order_id);
+                    $job->item->user_id = $order['user_id'];
+                    $this->log($job->item);
+                }
                 $res = $this->client->orders->create($job->item);
                 $this->log('create order response: ', $res);
                 break;

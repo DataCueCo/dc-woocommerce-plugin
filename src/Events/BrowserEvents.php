@@ -111,8 +111,19 @@ EOT;
     private function onProductPage()
     {
         $productId = get_the_ID();
-        $product = Product::generateProductItem($productId);
-        $productUpdateStr = json_encode($product);
+
+        // check if there're variants
+        $product = wc_get_product($productId);
+        $variants = $product->get_children();
+        if (count($variants) > 0) {
+            $item = Product::generateProductItem($variants[0], false, true);
+            $productUpdateStr = json_encode($item);
+            $variantId = $variants[0];
+        } else {
+            $item = Product::generateProductItem($productId);
+            $productUpdateStr = json_encode($item);
+            $variantId = '\'no-variants\'';
+        }
 
         echo <<<EOT
 <script>
@@ -122,7 +133,7 @@ window.datacueConfig = {
   options: {$this->dataCueConfigOptions},
   page_type: 'product',
   product_id: $productId,
-  variant_id: 'no-variants',
+  variant_id: $variantId,
   product_update: JSON.parse('$productUpdateStr')
 };
 </script>
