@@ -168,7 +168,12 @@ class Schedule
             // batch create products
             $data = [];
             foreach ($job->ids as $id) {
-                $data[] = Product::generateProductItem($id, true);
+                $product = wc_get_product($id);
+                if ($product->get_parent_id() === 0) {
+                    $data[] = Product::generateProductItem($product, true);
+                } else {
+                    $data[] = Product::generateProductItem($product, true, true);
+                }
             }
             $res = $this->client->products->batchCreate($data);
             $this->log('batch create products response: ' . $res);

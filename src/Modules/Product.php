@@ -19,7 +19,11 @@ class Product extends Base
      */
     public static function generateProductItem($id, $withId = false, $isVariant = false)
     {
-        $product = wc_get_product($id);
+        if (is_string($id) || is_int($id)) {
+            $product = wc_get_product($id);
+        } else {
+            $product = $id;
+        }
 
         if ($isVariant) {
             $parentProduct = wc_get_product($product->get_parent_id());
