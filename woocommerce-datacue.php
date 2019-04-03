@@ -29,10 +29,10 @@ use DataCue\WooCommerce\Events\BrowserEvents;
 use DataCue\WooCommerce\Common\Activator;
 use DataCue\WooCommerce\Common\Schedule;
 
-const ENV = 'development'; // development or production
 const MAX_TRY_TIMES = 1;
 const DEBUG = true;
 
+$env = file_exists(__DIR__ . '/staging') ? 'development' : 'production';
 $dataCueOptions = get_option('datacue_options');
 
 if ($dataCueOptions) {
@@ -40,7 +40,7 @@ if ($dataCueOptions) {
         $dataCueOptions['api_key'],
         $dataCueOptions['api_secret'],
         ['max_try_times' => MAX_TRY_TIMES],
-        ENV
+        $env
     );
     $options = ['debug' => DEBUG];
 
@@ -61,12 +61,12 @@ if ($dataCueOptions) {
     ProductCarousel::registerWidget();
 
     // events
-    BrowserEvents::registerHooks($dataCueOptions, ENV);
+    BrowserEvents::registerHooks($dataCueOptions, $env);
 }
 
 // setting page
 SettingsPage::registerPage([
     'max_try_times' => MAX_TRY_TIMES,
-    'env' => ENV,
+    'env' => $env,
     'debug' => DEBUG,
 ]);
