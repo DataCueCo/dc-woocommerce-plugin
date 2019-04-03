@@ -18,7 +18,7 @@ Learn how to connect DataCue for WooCommerce.
 
 - DataCue for WooCommerce also installs our Javascript library on your home page, product pages, category pages and search results page. The Javascript library personalizes your website content to each visitor's activity.
 
-- Depending on your countries privacy laws, you may need to explicitly get permission from the user.
+- Depending on your countries privacy laws, you may need to explicitly get permission from the user to use content personalization. Please consult with legal counsel if you're in any doubt.
 
 - DataCue for WooCommerce installs two widgets, banners and products. You may place banners on your home page, and the products widget on any page. The product widget should be placed on at least the home page and the product pages for best results.
 
