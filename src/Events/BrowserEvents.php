@@ -61,6 +61,8 @@ class BrowserEvents
             $this->on404Page();
         } else if (is_shop()) {
             $this->onHomePage();
+        } else if (is_front_page()) {
+            $this->onHomePage();
         }
     }
 
