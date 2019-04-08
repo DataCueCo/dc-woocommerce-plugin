@@ -201,12 +201,14 @@ class Product extends Base
         $this->log('Update variant');
         $this->log("variant_id=$id");
 
-        $item = static::generateProductItem($id, false, true);
         if ($task = $this->findAliveTask('products', 'create', $id)) {
+            $item = static::generateProductItem($id, true, true);
             $this->updateTask($task->id, ['item' => $item]);
         } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
+            $item = static::generateProductItem($id, false, true);
             $this->updateTask($task->id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
         } else {
+            $item = static::generateProductItem($id, false, true);
             $this->addTaskToQueue('products', 'update', $id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
         }
     }
