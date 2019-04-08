@@ -126,7 +126,6 @@ class Schedule
             dbDelta($sql);
 
             $job = json_decode($row->job);
-            $this->log($job);
 
             try {
                 if ($row->action === 'init') {
@@ -169,9 +168,16 @@ class Schedule
             $data = [];
             foreach ($job->ids as $id) {
                 $product = wc_get_product($id);
-                if ($product->get_parent_id() === 0) {
-                    $data[] = Product::generateProductItem($product, true);
-                } else {
+                $data[] = Product::generateProductItem($product, true);
+            }
+            $res = $this->client->products->batchCreate($data);
+            $this->log('batch create products response: ' . $res);
+        } elseif ($model === 'variants') {
+            // batch create variants
+            $data = [];
+            foreach ($job->ids as $id) {
+                $product = wc_get_product($id);
+                if ($product->get_parent_id() > 0) {
                     $data[] = Product::generateProductItem($product, true, true);
                 }
             }
@@ -201,7 +207,6 @@ class Schedule
                     }
                 }
             }
-            $this->log($data);
             $res = $this->client->orders->batchCreate($data);
             $this->log('batch create orders response: ' . $res);
         }
@@ -271,11 +276,6 @@ class Schedule
     {
         switch ($action) {
             case 'create':
-                if ($job->item->user_id === 0) {
-                    $order = Order::generateOrderItem($job->item->order_id);
-                    $job->item->user_id = $order['user_id'];
-                    $this->log($job->item);
-                }
                 $res = $this->client->orders->create($job->item);
                 $this->log('create order response: ', $res);
                 break;

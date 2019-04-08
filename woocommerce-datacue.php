@@ -31,7 +31,7 @@ use DataCue\WooCommerce\Common\Schedule;
 
 const ENV = 'development'; // development or production
 const MAX_TRY_TIMES = 1;
-const DEBUG = false;
+const DEBUG = true;
 
 $dataCueOptions = get_option('datacue_options');
 
