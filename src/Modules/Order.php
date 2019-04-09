@@ -2,7 +2,6 @@
 
 namespace DataCue\WooCommerce\Modules;
 
-use DataCue\Exceptions\RetryCountReachedException;
 use WC_Order_Item_Product;
 
 /**
@@ -11,6 +10,11 @@ use WC_Order_Item_Product;
  */
 class Order extends Base
 {
+    /**
+     * @var null
+     */
+    private $orderId = null;
+
     /**
      * Generate order item for DataCue
      * @param $order int|\WC_Order Order ID or Order object
@@ -58,74 +62,81 @@ class Order extends Base
     {
         parent::__construct($client, $options);
 
+        add_action('transition_post_status', [$this, 'onOrderStatusChanged'], 10, 3);
+        add_action('shutdown', [$this, 'onShutdown']);
         add_action('woocommerce_process_shop_order_meta', [$this, 'onOrderSaved'], 10, 1);
         add_action('woocommerce_thankyou', [$this, 'onOrderSaved'], 10, 1);
-        add_action('wc-cancelled_shop_order', [$this, 'onOrderCancelled'], 10, 2);
-        add_action('before_delete_post', [$this, 'onOrderDeleted']);
     }
 
     /**
-     * order created callback
-     * @param $orderId
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     * Order status changed hook
+     * @param $newStatus
+     * @param $oldStatus
+     * @param $post
      */
-    public function onOrderSaved($id)
+    public function onOrderStatusChanged($newStatus, $oldStatus, $post)
     {
-        $this->log("onOrderSaved");
+        if ($post->post_type !== 'shop_order') {
+            return;
+        }
 
-        try {
+        $this->log('onOrderStatusChanged new_status=' . $newStatus . ' && old_status=' . $oldStatus);
+        $id = $post->ID;
+
+        if ($oldStatus === 'trash') {
+            $item = static::generateOrderItem($id);
+            if (!is_null($item)) {
+                $this->log('Create order');
+                $this->addTaskToQueue('orders', 'create', $id, ['item' => $item]);
+            }
+            return;
+        }
+
+        if ($newStatus === 'trash') {
+            $this->log('Delete order');
+            $this->addTaskToQueue('orders', 'delete', $id, ['orderId' => $id]);
+            return;
+        }
+
+        if ($newStatus === 'wc-cancelled' && $oldStatus !== 'wc-cancelled') {
+            $this->log('Cancel order');
+            $this->addTaskToQueue('orders', 'cancel', $id, ['orderId' => $id]);
+            return;
+        }
+    }
+
+    /**
+     * Shutdown hook
+     */
+    public function onShutdown()
+    {
+        if (!is_null($this->orderId)) {
+            $this->log('onOrderSaved');
+            $id = $this->orderId;
             $order = wc_get_order($id);
-            $this->log($order->get_status());
-            if ($order->get_status() === 'cancelled') {
-                if (!$this->findTask('orders', 'cancel', $id)) {
-                    $this->log('can cancel order');
-                    $this->addTaskToQueue('orders', 'cancel', $id, ['orderId' => $id]);
-                }
-            } else {
+            if ($order->get_status() !== 'cancelled') {
                 if (!$this->findTask('orders', 'create', $id)) {
-                    $this->log('can create order');
+                    $this->log('Create order id=' . $id);
                     $item = static::generateOrderItem($order);
                     if (!is_null($item)) {
                         $this->addTaskToQueue('orders', 'create', $id, ['item' => $item]);
                     }
                 }
+            } else {
+                if (!$this->findTask('orders', 'cancel', $id)) {
+                    $this->log('Cancel order');
+                    $this->addTaskToQueue('orders', 'cancel', $id, ['orderId' => $id]);
+                }
             }
-        } catch (RetryCountReachedException $e) {
-            $this->log($e->errorMessage());
         }
     }
 
     /**
-     * order cancelled callback
+     * order created callback
      * @param $id
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
-    public function onOrderCancelled($id, $post)
+    public function onOrderSaved($id)
     {
-        $this->log('onOrderCancelled');
-        try {
-            $this->addTaskToQueue('orders', 'cancel', $id, ['orderId' => $id]);
-        } catch (RetryCountReachedException $e) {
-            $this->log($e->errorMessage());
-        }
-    }
-
-    /**
-     * order deleted callback
-     * @param $id
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
-     */
-    public function onOrderDeleted($id)
-    {
-        global $post_type;
-
-        if($post_type === 'shop_order') {
-            $this->log('onOrderDeleted');
-            try {
-                $this->addTaskToQueue('orders', 'delete', $id, ['orderId' => $id]);
-            } catch (RetryCountReachedException $e) {
-                $this->log($e->errorMessage());
-            }
-        }
+        $this->orderId = $id;
     }
 }

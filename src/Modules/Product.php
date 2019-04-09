@@ -2,8 +2,6 @@
 
 namespace DataCue\WooCommerce\Modules;
 
-use DataCue\Exceptions\RetryCountReachedException;
-
 /**
  * Class Product
  * @package DataCue\WooCommerce\Modules
@@ -87,6 +85,11 @@ class Product extends Base
         return $item;
     }
 
+    /**
+     * Get parent id of product
+     * @param $id
+     * @return int
+     */
     public static function getParentProductId($id)
     {
         $product = wc_get_product($id);
@@ -102,63 +105,82 @@ class Product extends Base
     {
         parent::__construct($client, $options);
 
-        add_action('save_post_product', [$this, 'onProductSaved'], 10, 3);
+        add_action('transition_post_status', [$this, 'onProductStatusChanged'], 10, 3);
         add_action('woocommerce_update_product', [$this, 'onProductUpdated']);
-        add_action('woocommerce_new_product_variation', [$this, 'onVariantCreated']);
         add_action('woocommerce_update_product_variation', [$this, 'onVariantUpdated']);
-        add_action('delete_post', [$this, 'onProductDeleted']);
     }
 
     /**
-     * Product created or updated callback
-     * @param $id
+     * Product status changed callback
+     * @param $newStatus
+     * @param $oldStatus
      * @param \WP_Post $post
-     * @param $update
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
-    public function onProductSaved($id, $post, $update)
-    {
-        if (!$update) {
-            $this->log('onProductSaved create');
-            $this->log("product_id=$id");
+    public function onProductStatusChanged($newStatus, $oldStatus, $post) {
+        if ($post->post_type !== 'product' && $post->post_type !== 'product_variation') {
+            return;
+        }
 
-            $item = static::generateProductItem($id, true);
-            $this->log($item);
-            try {
+        $this->log('onProductStatusChanged new_status=' . $newStatus . ' && old_status=' . $oldStatus);
+
+        $id = $post->ID;
+
+        if ($newStatus === 'publish') {
+            if ($post->post_type === 'product') {
+                $this->log('Create product');
+                $this->log("product_id=$id");
+                $item = static::generateProductItem($id, true);
                 $this->addTaskToQueue('products', 'create', $id, ['item' => $item]);
-            } catch (RetryCountReachedException $e) {
-                $this->log($e->errorMessage());
+            } else {
+                $this->log('Create variant');
+                $this->log("variant_id=$id");
+                $item = static::generateProductItem($id, true, true);
+                $this->addTaskToQueue('products', 'create', $id, ['item' => $item]);
             }
+            return;
+        }
+
+        if ($oldStatus === 'publish') {
+            if ($post->post_type === 'product') {
+                $this->log('Delete product');
+                $this->log("product_id=$id");
+                $this->addTaskToQueue('products', 'delete', $id, ['productId' => $id, 'variantId' => 'no-variants']);
+            } else {
+                $this->log('Delete variant');
+                $this->log("variant_id=$id");
+                $product = wc_get_product($id);
+                $this->addTaskToQueue('products', 'delete', $id, ['productId' => $product->get_parent_id(), 'variantId' => $id]);
+            }
+            return;
         }
     }
 
     /**
      * Product updated callback
      * @param $id
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function onProductUpdated($id)
     {
-        $this->log('onProductUpdated');
+        $product = wc_get_product($id);
+        if ($product->get_status() !== 'publish') {
+            return;
+        }
+
+        $this->log('Update product');
         $this->log("product_id=$id");
 
-        try {
-            if ($task = $this->findAliveTask('products', 'create', $id)) {
-                $item = static::generateProductItem($id, true);
-                $this->updateTask($task->id, ['item' => $item]);
-            } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
-                $item = static::generateProductItem($id);
-                $this->updateTask($task->id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
-            } else {
-                $item = static::generateProductItem($id);
-                $this->addTaskToQueue('products', 'update', $id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
-            }
-        } catch (RetryCountReachedException $e) {
-            $this->log($e->errorMessage());
+        if ($task = $this->findAliveTask('products', 'create', $id)) {
+            $item = static::generateProductItem($id, true);
+            $this->updateTask($task->id, ['item' => $item]);
+        } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
+            $item = static::generateProductItem($id);
+            $this->updateTask($task->id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
+        } else {
+            $item = static::generateProductItem($id);
+            $this->addTaskToQueue('products', 'update', $id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
         }
 
         // update variants belonging the current product
-        $product = wc_get_product($id);
         $variants = $product->get_children();
         foreach ($variants as $variantId) {
             $this->onVariantUpdated($variantId);
@@ -166,74 +188,28 @@ class Product extends Base
     }
 
     /**
-     * Variant created callback
-     * @param $id
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
-     */
-    public function onVariantCreated($id)
-    {
-        $this->log('onVariantCreated');
-        $this->log("variant_id=$id");
-
-        $item = static::generateProductItem($id, true, true);
-        $this->log($item);
-        try {
-            $this->addTaskToQueue('products', 'create', $id, ['item' => $item]);
-        } catch (RetryCountReachedException $e) {
-            $this->log($e->errorMessage());
-        }
-    }
-
-    /**
      * Variant updated callback
      * @param $id
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function onVariantUpdated($id)
     {
-        $this->log('onVariantUpdated');
+        $product = wc_get_product($id);
+        if ($product->get_status() !== 'publish') {
+            return;
+        }
+
+        $this->log('Update variant');
         $this->log("variant_id=$id");
 
-        $item = static::generateProductItem($id, false, true);
-        $this->log($item);
-        try {
-            if ($task = $this->findAliveTask('products', 'create', $id)) {
-                $this->updateTask($task->id, ['item' => $item]);
-            } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
-                $this->updateTask($task->id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
-            } else {
-                $this->addTaskToQueue('products', 'update', $id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
-            }
-        } catch (RetryCountReachedException $e) {
-            $this->log($e->errorMessage());
-        }
-    }
-
-    /**
-     * Product/Variant deleted callback
-     * @param $id
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
-     */
-    public function onProductDeleted($id)
-    {
-        $product = wc_get_product($id);
-        if ($product) {
-            $this->log('onProductDeleted');
-            if ($product->get_parent_id() === 0) {
-                $this->log('is product');
-                try {
-                    $this->addTaskToQueue('products', 'delete', $id, ['productId' => $id, 'variantId' => 'no-variants']);
-                } catch (RetryCountReachedException $e) {
-                    $this->log($e->errorMessage());
-                }
-            } else {
-                $this->log('is variant, and parent id = ' . $product->get_parent_id());
-                try {
-                    $this->addTaskToQueue('products', 'delete', $id, ['productId' => $product->get_parent_id(), 'variantId' => $id]);
-                } catch (RetryCountReachedException $e) {
-                    $this->log($e->errorMessage());
-                }
-            }
+        if ($task = $this->findAliveTask('products', 'create', $id)) {
+            $item = static::generateProductItem($id, true, true);
+            $this->updateTask($task->id, ['item' => $item]);
+        } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
+            $item = static::generateProductItem($id, false, true);
+            $this->updateTask($task->id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
+        } else {
+            $item = static::generateProductItem($id, false, true);
+            $this->addTaskToQueue('products', 'update', $id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
         }
     }
 }

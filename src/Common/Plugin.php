@@ -62,6 +62,7 @@ class Plugin
 
         // Skip checking sync flag for now
         $this->batchCreateProducts();
+        $this->batchCreateVariants();
         $this->batchCreateUsers();
         $this->batchCreateOrders();
     }
@@ -75,25 +76,18 @@ class Plugin
     {
         $this->log('batchCreateProducts');
 
-        $posts = get_posts([
-            'post_type' => 'product',
-            'fields' => 'ids',
-            'posts_per_page' => -1,
-        ]);
-        $variants = get_posts([
-            'post_type' => 'product_variation',
-            'fields' => 'ids',
-            'posts_per_page' => -1,
-        ]);
+        global $wpdb;
+        $products = $wpdb->get_results("SELECT `id` FROM `{$wpdb->prefix}posts` WHERE `post_type` = 'product' AND `post_status` = 'publish'");
+        $productIds = array_map(function ($item) {
+            return $item->id;
+        }, $products);
 
         $res = $this->client->overview->products();
         $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
 
-        $postIdsList = array_chunk(array_diff(array_merge($posts, $variants), $existingIds), static::CHUNK_SIZE);
+        $postIdsList = array_chunk(array_diff($productIds, $existingIds), static::CHUNK_SIZE);
 
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-
-        global $wpdb;
 
         foreach($postIdsList as $postIds) {
             $this->log($postIds);
@@ -107,6 +101,34 @@ class Plugin
     }
 
     /**
+     * Batch create variants
+     */
+    private function batchCreateVariants()
+    {
+        $this->log('batchCreateVariants');
+
+        global $wpdb;
+        $variants = $wpdb->get_results("SELECT `id` FROM `{$wpdb->prefix}posts` WHERE `post_type` = 'product_variation' AND `post_status` = 'publish'");
+        $variantIds = array_map(function ($item) {
+            return $item->id;
+        }, $variants);
+
+        $postIdsList = array_chunk($variantIds, static::CHUNK_SIZE);
+
+        require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+
+        foreach($postIdsList as $postIds) {
+            $this->log($postIds);
+            $job = json_encode([
+                'ids' => $postIds,
+            ]);
+
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', 'init', '$job', NULL, NOW())";
+            dbDelta( $sql );
+        }
+    }
+
+    /**
      * Batch create users
      *
      * @throws \DataCue\Exceptions\InvalidEnvironmentException
@@ -115,16 +137,21 @@ class Plugin
     {
         $this->log('batchCreateUsers');
 
-        $args = [
-            'fields' => 'ids',
-        ];
+//        $args = [
+//            'fields' => 'ids',
+//        ];
+
+        global $wpdb;
+        $users = $wpdb->get_results("SELECT `id` FROM `{$wpdb->prefix}users` WHERE `user_status` = 0");
+        $userIds = array_map(function ($item) {
+            return $item->id;
+        }, $users);
 
         $res = $this->client->overview->users();
         $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
 
-        $userIdsList = array_chunk(array_diff(get_users($args), $existingIds), static::CHUNK_SIZE);
+        $userIdsList = array_chunk(array_diff($userIds, $existingIds), static::CHUNK_SIZE);
 
-        global $wpdb;
         foreach ($userIdsList as $userIds) {
             $job = json_encode([
                 'ids' => $userIds,
@@ -144,19 +171,24 @@ class Plugin
     {
         $this->log('batchCreateOrders');
 
-        $args = [
-            'posts_per_page' => -1,
-        ];
-        $currentIds = array_map(function ($order) {
-            return $order->get_id();
-        }, wc_get_orders($args));
+//        $args = [
+//            'posts_per_page' => -1,
+//        ];
+//        $currentIds = array_map(function ($order) {
+//            return $order->get_id();
+//        }, wc_get_orders($args));
+
+        global $wpdb;
+        $orders = $wpdb->get_results("SELECT `id` FROM `{$wpdb->prefix}posts` WHERE `post_type` = 'shop_order' AND `post_status` != 'wc-cancelled'");
+        $orderIds = array_map(function ($item) {
+            return $item->id;
+        }, $orders);
 
         $res = $this->client->overview->orders();
         $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
 
-        $ordersIdList = array_chunk(array_diff($currentIds, $existingIds), static::CHUNK_SIZE);
+        $ordersIdList = array_chunk(array_diff($orderIds, $existingIds), static::CHUNK_SIZE);
 
-        global $wpdb;
         foreach($ordersIdList as $orderIds) {
             $job = json_encode([
                 'ids' => $orderIds,
