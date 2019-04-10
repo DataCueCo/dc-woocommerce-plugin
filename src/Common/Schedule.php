@@ -2,10 +2,10 @@
 
 namespace DataCue\WooCommerce\Common;
 
-use DataCue\Exceptions\RetryCountReachedException;
 use DataCue\WooCommerce\Utils\Log;
 use DataCue\WooCommerce\Modules\Product;
 use DataCue\WooCommerce\Modules\Order;
+use Exception;
 
 /**
  * Class Schedule
@@ -111,8 +111,6 @@ class Schedule
 
     /**
      * cron handler
-     *
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function workerCron()
     {
@@ -147,8 +145,8 @@ class Schedule
                 }
                 $sql = "UPDATE `{$wpdb->prefix}datacue_queue` SET status = " . static::STATUS_SUCCESS . " WHERE `id` = {$row->id}";
                 dbDelta( $sql );
-            } catch (RetryCountReachedException $e) {
-                $this->log($e->errorMessage());
+            } catch (Exception $e) {
+                $this->log($e->getMessage());
                 $sql = "UPDATE `{$wpdb->prefix}datacue_queue` SET status = " . static::STATUS_FAILURE . " WHERE `id` = {$row->id}";
                 dbDelta( $sql );
             }
@@ -156,9 +154,17 @@ class Schedule
     }
 
     /**
+     * Initialize data
+     *
      * @param $model
      * @param $job
+     * @throws \DataCue\Exceptions\RetryCountReachedException
+     * @throws \DataCue\Exceptions\ClientException
+     * @throws \DataCue\Exceptions\ExceedBodySizeLimitationException
+     * @throws \DataCue\Exceptions\ExceedListDataSizeLimitationException
      * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     * @throws \DataCue\Exceptions\NetworkErrorException
+     * @throws \DataCue\Exceptions\UnauthorizedException
      */
     private function doInit($model, $job)
     {
@@ -213,9 +219,17 @@ class Schedule
     }
 
     /**
+     * Do products job
+     *
      * @param $action
      * @param $job
+     * @throws \DataCue\Exceptions\RetryCountReachedException
+     * @throws \DataCue\Exceptions\ClientException
+     * @throws \DataCue\Exceptions\ExceedBodySizeLimitationException
+     * @throws \DataCue\Exceptions\ExceedListDataSizeLimitationException
      * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     * @throws \DataCue\Exceptions\NetworkErrorException
+     * @throws \DataCue\Exceptions\UnauthorizedException
      */
     private function doProductsJob($action, $job)
     {
@@ -243,9 +257,17 @@ class Schedule
     }
 
     /**
+     * Do users job
+     *
      * @param $action
      * @param $job
+     * @throws \DataCue\Exceptions\RetryCountReachedException
+     * @throws \DataCue\Exceptions\ClientException
+     * @throws \DataCue\Exceptions\ExceedBodySizeLimitationException
+     * @throws \DataCue\Exceptions\ExceedListDataSizeLimitationException
      * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     * @throws \DataCue\Exceptions\NetworkErrorException
+     * @throws \DataCue\Exceptions\UnauthorizedException
      */
     private function doUsersJob($action, $job)
     {
@@ -268,9 +290,17 @@ class Schedule
     }
 
     /**
+     * Do orders job
+     *
      * @param $action
      * @param $job
+     * @throws \DataCue\Exceptions\RetryCountReachedException
+     * @throws \DataCue\Exceptions\ClientException
+     * @throws \DataCue\Exceptions\ExceedBodySizeLimitationException
+     * @throws \DataCue\Exceptions\ExceedListDataSizeLimitationException
      * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     * @throws \DataCue\Exceptions\NetworkErrorException
+     * @throws \DataCue\Exceptions\UnauthorizedException
      */
     private function doOrdersJob($action, $job)
     {

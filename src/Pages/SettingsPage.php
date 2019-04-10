@@ -4,8 +4,8 @@ namespace DataCue\WooCommerce\Pages;
 
 use DataCue\Client;
 use DataCue\Exceptions\UnauthorizedException;
-use DataCue\Exceptions\RetryCountReachedException;
-use DataCue\WooCommerce\Common\Plugin;
+use DataCue\WooCommerce\Common\Initializer;
+use Exception;
 
 /**
  * Class SettingsPage
@@ -44,7 +44,7 @@ class SettingsPage
             add_action('admin_init', [$this, 'pageInit']);
             add_action('add_option_datacue_options', [$this, 'optionsAdded'], 10, 2);
             add_action('update_option_datacue_options', [$this, 'optionsUpdated'], 10, 2);
-            add_filter('plugin_action_links_woocommerce-datacue/woocommerce-datacue.php', [$this, 'pluginActionLinks']);
+            add_filter('plugin_action_links_dc-woocommerce-plugin/dc-woocommerce-plugin.php', [$this, 'pluginActionLinks']);
 
             $this->systemOptions = $options;
         }
@@ -107,7 +107,6 @@ class SettingsPage
      * Option first added hook
      * @param $name
      * @param $value
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function optionsAdded($name, $value)
     {
@@ -118,7 +117,6 @@ class SettingsPage
      * Option updated hook
      * @param $oldValue
      * @param $newValue
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function optionsUpdated($oldValue, $newValue)
     {
@@ -215,7 +213,6 @@ class SettingsPage
      * Do sync data to datacue server
      * @param $apiKey
      * @param $apiSecret
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     private function syncData($apiKey, $apiSecret)
     {
@@ -226,7 +223,7 @@ class SettingsPage
             $this->systemOptions['env']
         );
         $options = ['debug' => $this->systemOptions['debug']];
-        $instance = new Plugin($client, $options);
+        $instance = new Initializer($client, $options);
 
         try {
             $instance->syncData();
@@ -236,7 +233,7 @@ class SettingsPage
                 'authorized_error',
                 'Incorrect API key or API secret, please make sure to copy/paste them <strong>exactly</strong> as you see from your dashboard.'
             );
-        } catch (RetryCountReachedException $e) {
+        } catch (Exception $e) {
             add_settings_error(
                 'datacue_options',
                 'sync_fail',
