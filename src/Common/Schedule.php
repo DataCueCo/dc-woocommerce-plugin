@@ -14,6 +14,11 @@ use Exception;
 class Schedule
 {
     /**
+     * chunk size of each package
+     */
+    const CHUNK_SIZE = 200;
+
+    /**
      * Interval between two cron job.
      */
     const INTERVAL = 20;
@@ -178,6 +183,9 @@ class Schedule
             }
             $res = $this->client->products->batchCreate($data);
             $this->log('batch create products response: ' . $res);
+
+            // get variants belonging to the products
+            $this->addVariantsSyncTask($job->ids);
         } elseif ($model === 'variants') {
             // batch create variants
             $data = [];
@@ -319,6 +327,33 @@ class Schedule
                 break;
             default:
                 break;
+        }
+    }
+
+
+    private function addVariantsSyncTask($productIds)
+    {
+        $this->log('addVariantsSyncTask');
+
+        global $wpdb;
+        $productIdsStr = join(',', $productIds);
+        $variants = $wpdb->get_results("SELECT `id` FROM `{$wpdb->prefix}posts` WHERE `post_type` = 'product_variation' AND `post_status` = 'publish' AND `post_parent` IN ($productIdsStr)");
+        $variantIds = array_map(function ($item) {
+            return $item->id;
+        }, $variants);
+
+        $postIdsList = array_chunk($variantIds, static::CHUNK_SIZE);
+
+        require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+
+        foreach($postIdsList as $postIds) {
+            $this->log($postIds);
+            $job = json_encode([
+                'ids' => $postIds,
+            ]);
+
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', 'init', '$job', NULL, NOW())";
+            dbDelta( $sql );
         }
     }
 

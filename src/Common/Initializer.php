@@ -64,7 +64,8 @@ class Initializer
         }
 
         $this->batchCreateProducts();
-        $this->batchCreateVariants();
+        // sync variants once the tasks about product are fired
+        // $this->batchCreateVariants();
         $this->batchCreateUsers();
         $this->batchCreateOrders();
     }
