@@ -2,7 +2,7 @@
 
 namespace DataCue\WooCommerce\Modules;
 
-use DataCue\Exceptions\RetryCountReachedException;
+use Exception;
 
 /**
  * Class Event
@@ -28,7 +28,6 @@ class Event extends Base
 
     /**
      * Cart updated hook
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function onCartUpdated()
     {
@@ -68,8 +67,8 @@ class Event extends Base
                 ]
             );
             $this->log($res);
-        } catch (RetryCountReachedException $e) {
-            $this->log($e);
+        } catch (Exception $e) {
+            $this->log($e->getMessage());
         }
     }
 

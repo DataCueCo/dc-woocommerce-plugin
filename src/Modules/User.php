@@ -2,8 +2,6 @@
 
 namespace DataCue\WooCommerce\Modules;
 
-use DataCue\Exceptions\RetryCountReachedException;
-
 /**
  * Class User
  * @package DataCue\WooCommerce\Modules
@@ -27,7 +25,6 @@ class User extends Base
     /**
      * User created callback
      * @param $userId
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function onUserCreated($userId)
     {
@@ -39,17 +36,12 @@ class User extends Base
             $user->{$item->meta_key} = $item->meta_value;
         }, $metaInfo);
 
-        try {
-            $this->addTaskToQueue('users', 'create', $userId, ['item' => $user]);
-        } catch (RetryCountReachedException $e) {
-            $this->log($e->errorMessage());
-        }
+        $this->addTaskToQueue('users', 'create', $userId, ['item' => $user]);
     }
 
     /**
      * User updated callback
      * @param $userId
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function onUserUpdated($userId)
     {
@@ -61,33 +53,24 @@ class User extends Base
             $user->{$item->meta_key} = $item->meta_value;
         }, $metaInfo);
 
-        try {
-            if ($task = $this->findAliveTask('users', 'create', $userId)) {
-                $user->user_id = $userId;
-                $this->updateTask($task->id, ['item' => $user]);
-            } elseif ($task = $this->findAliveTask('users', 'update', $userId)) {
-                $this->updateTask($task->id, ['userId' => $userId, 'item' => $user]);
-            } else {
-                $this->addTaskToQueue('users', 'update', $userId, ['userId' => $userId, 'item' => $user]);
-            }
-        } catch (RetryCountReachedException $e) {
-            $this->log($e->errorMessage());
+        if ($task = $this->findAliveTask('users', 'create', $userId)) {
+            $user->user_id = $userId;
+            $this->updateTask($task->id, ['item' => $user]);
+        } elseif ($task = $this->findAliveTask('users', 'update', $userId)) {
+            $this->updateTask($task->id, ['userId' => $userId, 'item' => $user]);
+        } else {
+            $this->addTaskToQueue('users', 'update', $userId, ['userId' => $userId, 'item' => $user]);
         }
     }
 
     /**
      * User deleted callback
      * @param $userId
-     * @throws \DataCue\Exceptions\InvalidEnvironmentException
      */
     public function onUserDeleted($userId)
     {
         $this->log('onUserDeleted');
 
-        try {
-            $this->addTaskToQueue('users', 'delete', $userId, ['userId' => $userId]);
-        } catch (RetryCountReachedException $e) {
-            $this->log($e->errorMessage());
-        }
+        $this->addTaskToQueue('users', 'delete', $userId, ['userId' => $userId]);
     }
 }
