@@ -134,8 +134,8 @@ window.datacueConfig = {
   user_id: {$this->getUserId()},
   options: {$this->dataCueConfigOptions},
   page_type: 'product',
-  product_id: $productId,
-  variant_id: $variantId,
+  product_id: '$productId',
+  variant_id: '$variantId',
   product_update: JSON.parse('$productUpdateStr')
 };
 </script>
