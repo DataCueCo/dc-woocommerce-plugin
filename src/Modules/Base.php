@@ -67,8 +67,10 @@ abstract class Base
     {
         $job = json_encode($job);
         global $wpdb;
-        $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (`model`, `action`, `model_id`, `job`, `executed_at`, `created_at`) values ('$model', '$action', $modelId, '$job', NULL, NOW())";
-        dbDelta( $sql );
+        $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (`model`, `action`, `model_id`, `job`, `executed_at`, `created_at`) values (%s, %s, %d, %s, NULL, NOW())";
+        $wpdb->query(
+            $wpdb->prepare($sql, $model, $action, $modelId, $job)
+        );
     }
 
     /**
@@ -80,8 +82,10 @@ abstract class Base
     {
         $job = json_encode($job);
         global $wpdb;
-        $sql = "UPDATE {$wpdb->prefix}datacue_queue SET job = '$job' WHERE id = $id";
-        dbDelta( $sql );
+        $sql = "UPDATE {$wpdb->prefix}datacue_queue SET job = %s WHERE id = $id";
+        $wpdb->query(
+            $wpdb->prepare($sql, $job)
+        );
     }
 
     /**

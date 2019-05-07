@@ -125,7 +125,7 @@ class Product extends Base
 
         $id = $post->ID;
 
-        if ($newStatus === 'publish') {
+        if ($newStatus === 'publish' && $oldStatus !== 'publish') {
             if ($post->post_type === 'product') {
                 $this->log('Create product');
                 $this->log("product_id=$id");
@@ -140,7 +140,7 @@ class Product extends Base
             return;
         }
 
-        if ($oldStatus === 'publish') {
+        if ($oldStatus === 'publish' && $newStatus !== 'publish') {
             if ($post->post_type === 'product') {
                 $this->log('Delete product');
                 $this->log("product_id=$id");
