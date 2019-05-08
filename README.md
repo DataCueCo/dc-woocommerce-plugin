@@ -22,10 +22,10 @@ Learn how to connect DataCue for WooCommerce.
 When you deactivate DataCue for WooCommerce, we remove all changes made to your store including the Javascript. We also immediately stop syncing any changes to your store data with DataCue.
 To deactivate DataCue for WooCommerce, follow these steps.
 
-1) Log in to your WordPress admin panel.
+1. Log in to your WordPress admin panel.
 
-2) In the left navigation panel, click **Plugins**, and choose **Installed Plugins**.
+2. In the left navigation panel, click **Plugins**, and choose **Installed Plugins**.
 
-3) Click the box next to the DataCue for WooCommerce plugin, and click **Deactivate**.
+3. Click the box next to the DataCue for WooCommerce plugin, and click **Deactivate**.
 
-After you deactivate the plugin, you will have the option to **Delete** the plugin.
+4. Once you deactivate the plugin, you will have the option to **Delete** the plugin.
