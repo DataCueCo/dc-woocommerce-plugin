@@ -7,6 +7,7 @@ Learn how to connect DataCue for WooCommerce.
 - For the most up-to-date install instructions, read our [DataCue guide for WooCommerce](https://help.datacue.co/woocommerce/installation.html). 
 
 ## Installation and Setup
+
 **Here’s a brief overview of this multi-step process.**
 
 - Clone this repository to your local machine and run `composer install` from the folder
@@ -17,6 +18,7 @@ Learn how to connect DataCue for WooCommerce.
 - Depending on the size of your store the sync process can take a few mins to a few hours.
 
 ## Deactivate or Delete the Plugin
+
 When you deactivate DataCue for WooCommerce, we remove all changes made to your store including the Javascript. We also immediately stop syncing any changes to your store data with DataCue.
 To deactivate DataCue for WooCommerce, follow these steps.
 
