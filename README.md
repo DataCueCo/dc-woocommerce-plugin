@@ -9,8 +9,6 @@ Learn how to connect DataCue for WooCommerce.
 ## Installation and Setup
 **Here’s a brief overview of this multi-step process.**
 
-### Build yourself
-
 - Clone this repository to your local machine and run `composer install` from the folder
 - Zip the whole folder using your favourite ZIP compression tool
 - Install the plugin on your WordPress Admin site by clicking on **Plugins** > **Add New** > **Upload plugin** > **Choose File** > select the ZIP file you just created and click **Install Now**.
@@ -18,7 +16,7 @@ Learn how to connect DataCue for WooCommerce.
 - Connect the plugin with your DataCue API Key and Secret (you can find it on your dashboard) and press save.
 - Depending on the size of your store the sync process can take a few mins to a few hours.
 
-# Deactivate or Delete the Plugin
+## Deactivate or Delete the Plugin
 When you deactivate DataCue for WooCommerce, we remove all changes made to your store including the Javascript. We also immediately stop syncing any changes to your store data with DataCue.
 To deactivate DataCue for WooCommerce, follow these steps.
 
