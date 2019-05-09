@@ -125,8 +125,10 @@ class Schedule
         $row = $wpdb->get_row("SELECT `id`,`model`, `model_id`,`action`,`job` FROM `{$wpdb->prefix}datacue_queue` WHERE `executed_at` IS NULL LIMIT 1");
         if (!is_null($row)) {
             // update executed_at field
-            $sql = "UPDATE `{$wpdb->prefix}datacue_queue` SET `executed_at` = NOW(), status = " . static::STATUS_PENDING . " WHERE `id` = {$row->id}";
-            dbDelta($sql);
+            $sql = "UPDATE `{$wpdb->prefix}datacue_queue` SET `executed_at` = NOW(), status = " . static::STATUS_PENDING . " WHERE `id` = %d";
+            $wpdb->query(
+                $wpdb->prepare($sql, $row->id)
+            );
 
             $job = json_decode($row->job);
 
@@ -148,12 +150,16 @@ class Schedule
                             break;
                     }
                 }
-                $sql = "UPDATE `{$wpdb->prefix}datacue_queue` SET status = " . static::STATUS_SUCCESS . " WHERE `id` = {$row->id}";
-                dbDelta( $sql );
+                $sql = "UPDATE `{$wpdb->prefix}datacue_queue` SET status = " . static::STATUS_SUCCESS . " WHERE `id` = %d";
+                $wpdb->query(
+                    $wpdb->prepare($sql, $row->id)
+                );
             } catch (Exception $e) {
                 $this->log($e->getMessage());
-                $sql = "UPDATE `{$wpdb->prefix}datacue_queue` SET status = " . static::STATUS_FAILURE . " WHERE `id` = {$row->id}";
-                dbDelta( $sql );
+                $sql = "UPDATE `{$wpdb->prefix}datacue_queue` SET status = " . static::STATUS_FAILURE . " WHERE `id` = %d";
+                $wpdb->query(
+                    $wpdb->prepare($sql, $row->id)
+                );
             }
         }
     }
@@ -201,8 +207,14 @@ class Schedule
             // batch create users
             $data = [];
             foreach ($job->ids as $id) {
-                $user = $wpdb->get_row("SELECT `id` as `user_id`, `user_email` as `email`, DATE_FORMAT(`user_registered`, '%Y-%m-%dT%TZ') AS `timestamp` FROM `wp_users` where `id`=$id");
-                $metaInfo = $wpdb->get_results("SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=$id AND `meta_key` IN('first_name', 'last_name')");
+                $sql = "SELECT `id` as `user_id`, `user_email` as `email`, DATE_FORMAT(`user_registered`, '%%Y-%%m-%%dT%%TZ') AS `timestamp` FROM `wp_users` where `id`=%d";
+                $user = $wpdb->get_row(
+                    $wpdb->prepare($sql, $id)
+                );
+                $sql = "SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=%d AND `meta_key` IN('first_name', 'last_name')";
+                $metaInfo = $wpdb->get_results(
+                    $wpdb->prepare($sql, $id)
+                );
                 array_map(function ($item) use ($user) {
                     $user->{$item->meta_key} = $item->meta_value;
                 }, $metaInfo);
@@ -336,7 +348,7 @@ class Schedule
         $this->log('addVariantsSyncTask');
 
         global $wpdb;
-        $productIdsStr = join(',', $productIds);
+        $productIdsStr = $wpdb->_escape(join(',', $productIds));
         $variants = $wpdb->get_results("SELECT `id` FROM `{$wpdb->prefix}posts` WHERE `post_type` = 'product_variation' AND `post_status` = 'publish' AND `post_parent` IN ($productIdsStr)");
         $variantIds = array_map(function ($item) {
             return $item->id;
@@ -352,8 +364,10 @@ class Schedule
                 'ids' => $postIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', 'init', '$job', NULL, NOW())";
-            dbDelta( $sql );
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', 'init', %s, NULL, NOW())";
+            $wpdb->query(
+                $wpdb->prepare($sql, $job)
+            );
         }
     }
 

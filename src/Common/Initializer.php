@@ -96,16 +96,16 @@ class Initializer
 
         $postIdsList = array_chunk(array_diff($productIds, $existingIds), static::CHUNK_SIZE);
 
-        require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-
         foreach($postIdsList as $postIds) {
             $this->log($postIds);
             $job = json_encode([
                 'ids' => $postIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('products', 'init', '$job', NULL, NOW())";
-            dbDelta( $sql );
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('products', 'init', %s, NULL, NOW())";
+            $wpdb->query(
+                $wpdb->prepare($sql, $job)
+            );
         }
     }
 
@@ -124,16 +124,16 @@ class Initializer
 
         $postIdsList = array_chunk($variantIds, static::CHUNK_SIZE);
 
-        require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-
         foreach($postIdsList as $postIds) {
             $this->log($postIds);
             $job = json_encode([
                 'ids' => $postIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', 'init', '$job', NULL, NOW())";
-            dbDelta( $sql );
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', 'init', %s, NULL, NOW())";
+            $wpdb->query(
+                $wpdb->prepare($sql, $job)
+            );
         }
     }
 
@@ -168,8 +168,10 @@ class Initializer
                 'ids' => $userIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('users', 'init', '$job', NULL, NOW())";
-            dbDelta( $sql );
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('users', 'init', %s, NULL, NOW())";
+            $wpdb->query(
+                $wpdb->prepare($sql, $job)
+            );
         }
     }
 
@@ -204,8 +206,10 @@ class Initializer
                 'ids' => $orderIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('orders', 'init', '$job', NULL, NOW())";
-            dbDelta( $sql );
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('orders', 'init', %s, NULL, NOW())";
+            $wpdb->query(
+                $wpdb->prepare($sql, $job)
+            );
         }
     }
 

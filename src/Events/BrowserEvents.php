@@ -136,7 +136,7 @@ window.datacueConfig = {
   page_type: 'product',
   product_id: '$productId',
   variant_id: '$variantId',
-  product_update: JSON.parse('$productUpdateStr')
+  product_update: $productUpdateStr
 };
 </script>
 <script src="https://cdn.datacue.co/js/datacue.js"></script>
@@ -250,7 +250,7 @@ window.datacue.identify({$this->getUserId()});
 window.datacue.track({
   type: 'checkout',
   subtype: 'started',
-  cart: JSON.parse('$cartStr'),
+  cart: $cartStr,
   cart_link:'$cartLink'
 });
 </script>

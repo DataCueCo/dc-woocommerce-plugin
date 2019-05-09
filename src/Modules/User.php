@@ -30,8 +30,14 @@ class User extends Base
     {
         $this->log('onUserCreated');
         global $wpdb;
-        $user = $wpdb->get_row("SELECT `id` as `user_id`, `user_email` as `email`, DATE_FORMAT(`user_registered`, '%Y-%m-%dT%TZ') AS `timestamp` FROM `wp_users` where `id`=$userId");
-        $metaInfo = $wpdb->get_results("SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=$userId AND `meta_key` IN('first_name', 'last_name')");
+        $sql = "SELECT `id` as `user_id`, `user_email` as `email`, DATE_FORMAT(`user_registered`, '%%Y-%%m-%%dT%%TZ') AS `timestamp` FROM `wp_users` where `id`=%d";
+        $user = $wpdb->get_row(
+            $wpdb->prepare($sql, $userId)
+        );
+        $sql = "SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=%d AND `meta_key` IN('first_name', 'last_name')";
+        $metaInfo = $wpdb->get_results(
+            $wpdb->prepare($sql, $userId)
+        );
         array_map(function ($item) use ($user) {
             $user->{$item->meta_key} = $item->meta_value;
         }, $metaInfo);
@@ -47,8 +53,14 @@ class User extends Base
     {
         $this->log('onUserUpdated');
         global $wpdb;
-        $user = $wpdb->get_row("SELECT `user_email` as `email`, DATE_FORMAT(`user_registered`, '%Y-%m-%dT%TZ') AS `timestamp` FROM `wp_users` where `id`=$userId");
-        $metaInfo = $wpdb->get_results("SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=$userId AND `meta_key` IN('first_name', 'last_name')");
+        $sql = "SELECT `user_email` as `email`, DATE_FORMAT(`user_registered`, '%%Y-%%m-%%dT%%TZ') AS `timestamp` FROM `wp_users` where `id`=%d";
+        $user = $wpdb->get_row(
+            $wpdb->prepare($sql, $userId)
+        );
+        $sql = "SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=%d AND `meta_key` IN('first_name', 'last_name')";
+        $metaInfo = $wpdb->get_results(
+            $wpdb->prepare($sql, $userId)
+        );
         array_map(function ($item) use ($user) {
             $user->{$item->meta_key} = $item->meta_value;
         }, $metaInfo);

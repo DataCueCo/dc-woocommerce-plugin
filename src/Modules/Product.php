@@ -108,6 +108,7 @@ class Product extends Base
         add_action('transition_post_status', [$this, 'onProductStatusChanged'], 10, 3);
         add_action('woocommerce_update_product', [$this, 'onProductUpdated']);
         add_action('woocommerce_update_product_variation', [$this, 'onVariantUpdated']);
+        add_action('before_delete_post', [$this, 'onVariantDeleted']);
     }
 
     /**
@@ -210,6 +211,21 @@ class Product extends Base
         } else {
             $item = static::generateProductItem($id, false, true);
             $this->addTaskToQueue('products', 'update', $id, ['productId' => static::getParentProductId($id), 'variantId' => $id, 'item' => $item]);
+        }
+    }
+
+    /**
+     * Variant deleted callback
+     * @param $id
+     */
+    public function onVariantDeleted($id)
+    {
+        $post = get_post($id);
+        if ($post->post_type === 'product_variation') {
+            $this->log('Delete variant');
+            $this->log("variant_id=$id");
+            $product = wc_get_product($id);
+            $this->addTaskToQueue('products', 'delete', $id, ['productId' => $product->get_parent_id(), 'variantId' => $id]);
         }
     }
 }

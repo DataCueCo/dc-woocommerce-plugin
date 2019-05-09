@@ -82,9 +82,9 @@ abstract class Base
     {
         $job = json_encode($job);
         global $wpdb;
-        $sql = "UPDATE {$wpdb->prefix}datacue_queue SET job = %s WHERE id = $id";
+        $sql = "UPDATE {$wpdb->prefix}datacue_queue SET job = %s WHERE id = %d";
         $wpdb->query(
-            $wpdb->prepare($sql, $job)
+            $wpdb->prepare($sql, $job, $id)
         );
     }
 
@@ -98,7 +98,10 @@ abstract class Base
     protected function findTask($model, $action, $modelId)
     {
         global $wpdb;
-        $row = $wpdb->get_row("SELECT `id`,`model`, `model_id`,`action`,`job` FROM `{$wpdb->prefix}datacue_queue` WHERE `model` = '$model' AND `action` = '$action' AND `model_id` = $modelId LIMIT 1");
+        $sql = "SELECT `id`, `model`, `model_id`, `action`, `job` FROM `{$wpdb->prefix}datacue_queue` WHERE `model` = %s AND `action` = %s AND `model_id` = %d LIMIT 1";
+        $row = $wpdb->get_row(
+            $wpdb->prepare($sql, $model, $action, $modelId)
+        );
         if (!is_null($row)) {
             $row->job = json_decode($row->job);
         }
@@ -115,7 +118,10 @@ abstract class Base
     protected function findAliveTask($model, $action, $modelId)
     {
         global $wpdb;
-        $row = $wpdb->get_row("SELECT `id`,`model`, `model_id`,`action`,`job` FROM `{$wpdb->prefix}datacue_queue` WHERE `model` = '$model' AND `action` = '$action' AND `model_id` = $modelId AND `executed_at` IS NULL LIMIT 1");
+        $sql = "SELECT `id`,`model`, `model_id`,`action`,`job` FROM `{$wpdb->prefix}datacue_queue` WHERE `model` = %s AND `action` = %s AND `model_id` = %d AND `executed_at` IS NULL LIMIT 1";
+        $row = $wpdb->get_row(
+            $wpdb->prepare($sql, $model, $action, $modelId)
+        );
         if (!is_null($row)) {
             $row->job = json_decode($row->job);
         }
