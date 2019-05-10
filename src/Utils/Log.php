@@ -20,7 +20,7 @@ class Log
             $message = json_encode($message);
         }
         $file = fopen(static::getLogFile(),"a");
-        fwrite($file, date('Y-m-d h:i:s') . " :: " . $message . "\n");
+        fwrite($file, date('Y-m-d H:i:s') . " :: " . $message . "\n");
         fclose($file);
     }
 

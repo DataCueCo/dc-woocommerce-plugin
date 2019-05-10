@@ -79,6 +79,8 @@ class Schedule
         add_action('datacue_worker_cron', [$this, 'workerCron']);
         add_filter('cron_schedules', [$this, 'scheduleCron']);
 
+        add_action('wp_ajax_load_sync_status_action', [$this, 'loadSyncStatus']);
+
         $this->maybeScheduleCron();
     }
 
@@ -369,6 +371,48 @@ class Schedule
                 $wpdb->prepare($sql, $job)
             );
         }
+    }
+
+    public function loadSyncStatus()
+    {
+        $this->workerCron();
+
+        global $wpdb;
+        $res = [
+            'products' => [
+                'total' => 0,
+                'completed' => 0,
+                'failed' => 0,
+            ],
+            'variants' => [
+                'total' => 0,
+                'completed' => 0,
+                'failed' => 0,
+            ],
+            'users' => [
+                'total' => 0,
+                'completed' => 0,
+                'failed' => 0,
+            ],
+            'orders' => [
+                'total' => 0,
+                'completed' => 0,
+                'failed' => 0,
+            ],
+        ];
+        $rows = $wpdb->get_results("SELECT `id`,`model`, `job`, `status` FROM `{$wpdb->prefix}datacue_queue` WHERE `action` = 'init'");
+        foreach($rows as $item) {
+            $count = count(json_decode($item->job)->ids);
+            $res[$item->model]['total'] += $count;
+            if (intval($item->status) === static::STATUS_SUCCESS) {
+                $res[$item->model]['completed'] += $count;
+            } elseif (intval($item->status) === static::STATUS_FAILURE) {
+                $res[$item->model]['failed'] += $count;
+            }
+        }
+
+        wp_send_json($res);
+        wp_die();
     }
 
     /**
