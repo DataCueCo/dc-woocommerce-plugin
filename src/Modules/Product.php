@@ -37,6 +37,7 @@ class Product extends Base
             'link' => get_permalink($product->get_id()),
             'available' => $product->get_status() === 'publish',
             'description' => $isVariant ? $parentProduct->get_description() : $product->get_description(),
+            'brand' => $isVariant ? static::getFirstBrandNameByProductId($product->get_parent_id()) : static::getFirstBrandNameByProductId($product->get_id()),
         ];
 
         // get photo url
@@ -94,6 +95,28 @@ class Product extends Base
     {
         $product = wc_get_product($id);
         return $product->get_parent_id();
+    }
+
+    /**
+     * @param $id
+     * @return null|string
+     */
+    public static function getFirstBrandNameByProductId($id)
+    {
+        global $wpdb;
+        $sql = "SELECT c.`name` FROM `wp_term_relationships` a 
+                LEFT JOIN `wp_term_taxonomy` b ON a.`term_taxonomy_id` = b.`term_taxonomy_id` 
+                LEFT JOIN `wp_terms` c ON c.`term_id` = b.`term_id` 
+                WHERE a.`object_id` = %d AND b.`taxonomy` = %s";
+        $item = $wpdb->get_row(
+            $wpdb->prepare($sql, intval($id), 'product_brand')
+        );
+
+        if (is_null($item)) {
+            return null;
+        }
+
+        return $item->name;
     }
 
     /**
