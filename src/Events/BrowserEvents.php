@@ -124,7 +124,7 @@ EOT;
         } else {
             $item = Product::generateProductItem($productId);
             $productUpdateStr = json_encode($item);
-            $variantId = '\'no-variants\'';
+            $variantId = 'no-variants';
         }
 
         echo <<<EOT
