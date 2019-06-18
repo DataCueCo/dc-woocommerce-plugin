@@ -119,6 +119,10 @@ class Product extends Base
         return $item->name;
     }
 
+    private $oldProductType = null;
+
+    private $isOnProductUpdatedFunctionFired = false;
+
     /**
      * Product constructor.
      * @param $client
@@ -129,6 +133,7 @@ class Product extends Base
         parent::__construct($client, $options);
 
         add_action('transition_post_status', [$this, 'onProductStatusChanged'], 10, 3);
+        add_action('pre_post_update', [$this, 'beforeProductUpdated'], 10, 2);
         add_action('woocommerce_update_product', [$this, 'onProductUpdated']);
         add_action('woocommerce_update_product_variation', [$this, 'onVariantUpdated']);
         add_action('before_delete_post', [$this, 'onVariantDeleted']);
@@ -151,10 +156,13 @@ class Product extends Base
 
         if ($newStatus === 'publish' && $oldStatus !== 'publish') {
             if ($post->post_type === 'product') {
-                $this->log('Create product');
-                $this->log("product_id=$id");
-                $item = static::generateProductItem($id, true);
-                $this->addTaskToQueue('products', 'create', $id, ['item' => $item]);
+                $product = wc_get_product($id);
+                if ($product->get_type() !== 'variable') {
+                    $this->log('Create product');
+                    $this->log("product_id=$id");
+                    $item = static::generateProductItem($product, true);
+                    $this->addTaskToQueue('products', 'create', $id, ['item' => $item]);
+                }
             } else {
                 $this->log('Create variant');
                 $this->log("variant_id=$id");
@@ -166,9 +174,12 @@ class Product extends Base
 
         if ($oldStatus === 'publish' && $newStatus !== 'publish') {
             if ($post->post_type === 'product') {
-                $this->log('Delete product');
-                $this->log("product_id=$id");
-                $this->addTaskToQueue('products', 'delete', $id, ['productId' => $id, 'variantId' => 'no-variants']);
+                $product = wc_get_product($id);
+                if ($product->get_type() !== 'variable') {
+                    $this->log('Delete product');
+                    $this->log("product_id=$id");
+                    $this->addTaskToQueue('products', 'delete', $id, ['productId' => $id, 'variantId' => 'no-variants']);
+                }
             } else {
                 $this->log('Delete variant');
                 $this->log("variant_id=$id");
@@ -179,29 +190,67 @@ class Product extends Base
         }
     }
 
+    public function beforeProductUpdated($id, array $data)
+    {
+        $post = get_post($id);
+        if ($post->post_type === 'product') {
+            $product = wc_get_product($post);
+            $this->oldProductType = $product->get_type();
+        }
+    }
+
     /**
      * Product updated callback
      * @param $id
      */
     public function onProductUpdated($id)
     {
+        // this hook will be fired twice. So we need to filter out the second time.
+        if ($this->isOnProductUpdatedFunctionFired) {
+            return;
+        }
+        $this->isOnProductUpdatedFunctionFired = true;
+
         $product = wc_get_product($id);
         if ($product->get_status() !== 'publish') {
             return;
         }
 
-        $this->log('Update product');
-        $this->log("product_id=$id");
+        if ($product->get_type() === 'variable' && $this->oldProductType !== 'variable') {
+            $this->log('Delete product (product type changed to variable)');
+            $this->log("product_id=$id");
+            $this->addTaskToQueue('products', 'delete', $id, ['productId' => $id, 'variantId' => 'no-variants']);
+            return;
+        }
 
-        if ($task = $this->findAliveTask('products', 'create', $id)) {
-            $item = static::generateProductItem($id, true);
-            $this->updateTask($task->id, ['item' => $item]);
-        } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
-            $item = static::generateProductItem($id);
-            $this->updateTask($task->id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
-        } else {
-            $item = static::generateProductItem($id);
-            $this->addTaskToQueue('products', 'update', $id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
+        if ($product->get_type() !== 'variable' && $this->oldProductType === 'variable') {
+            $this->log('Create product (product type changed to non-variable)');
+            $this->log("product_id=$id");
+            $item = static::generateProductItem($product, true);
+            $this->addTaskToQueue('products', 'create', $id, ['item' => $item]);
+
+            // update variants belonging the current product (For a special scene: mundopetit.cl)
+            $variants = $product->get_children();
+            foreach ($variants as $variantId) {
+                $this->onVariantUpdated($variantId);
+            }
+            return;
+        }
+
+        if ($product->get_type() !== 'variable') {
+            $this->log('Update product');
+            $this->log("product_id=$id");
+
+            if ($task = $this->findAliveTask('products', 'create', $id)) {
+                $item = static::generateProductItem($id, true);
+                $this->updateTask($task->id, ['item' => $item]);
+            } elseif ($task = $this->findAliveTask('products', 'update', $id)) {
+                $item = static::generateProductItem($id);
+                $this->updateTask($task->id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
+            } else {
+                $item = static::generateProductItem($id);
+                $this->addTaskToQueue('products', 'update', $id, ['productId' => $id, 'variantId' => 'no-variants', 'item' => $item]);
+            }
         }
 
         // update variants belonging the current product

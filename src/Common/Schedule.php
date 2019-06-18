@@ -185,22 +185,30 @@ class Schedule
         if ($model === 'products') {
             // batch create products
             $data = [];
+            $variableProductIds = [];
             foreach ($job->ids as $id) {
                 $product = wc_get_product($id);
-                $data[] = Product::generateProductItem($product, true);
+                if ($product->get_type() !== 'variable') {
+                    $data[] = Product::generateProductItem($product, true);
+                } else {
+                    $variableProductIds[] = $id;
+                }
             }
             $res = $this->client->products->batchCreate($data);
             $this->log('batch create products response: ' . $res);
 
             // get variants belonging to the products
-            $this->addVariantsSyncTask($job->ids);
+            $this->addVariantsSyncTask($variableProductIds);
         } elseif ($model === 'variants') {
             // batch create variants
             $data = [];
             foreach ($job->ids as $id) {
                 $product = wc_get_product($id);
                 if ($product->get_parent_id() > 0) {
-                    $data[] = Product::generateProductItem($product, true, true);
+                    $parentProduct = wc_get_product($product->get_parent_id());
+                    if ($parentProduct->get_type() === 'variable') {
+                        $data[] = Product::generateProductItem($product, true, true);
+                    }
                 }
             }
             $res = $this->client->products->batchCreate($data);
