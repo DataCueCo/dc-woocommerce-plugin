@@ -119,6 +119,7 @@ class SettingsPage
         // Set class property
         $this->options = get_option('datacue_options');
         ?>
+        <link rel="stylesheet" type="text/css" href="<?php echo get_site_url(null, 'wp-content/plugins/dc-woocommerce-plugin/assets/css/common.css'); ?>" />
         <div class="wrap">
           <h1>DataCue Settings</h1>
           <div id="datacue-tabs">
@@ -136,9 +137,19 @@ class SettingsPage
                   submit_button();
                   ?>
               </form>
-              <div style="margin-top: 10px; padding-top: 20px; border-top: 1px solid #aaa;">
-                <a href="https://app.datacue.co" target="_blank" style="display: inline-block; text-decoration:none; background-color: #80ab4b; color: #fff; padding: 0 20px; height: 40px; border-radius: 20px; line-height: 40px; text-align: center;">LOGIN TO MY DATACUE DASHBOARD</a>
-                <div style="margin-top: 20px; font-size: 15px;">No account yet? Sign up <a href="https://app.datacue.co/en/sign-up" target="_blank" style="color: #8c5c85; font-weight: 600;">here</a></div>
+              <div class="datacue-helper-section">
+                <h2>Here are some resources you might find helpful</h2>
+                <ul class="list">
+                  <li><a href="https://help.datacue.co/install/woocommerce.html#add-recommendations" target="_blank">Add banners and products to your site</a></li>
+                </ul>
+              </div>
+              <div class="datacue-helper-section">
+                <a class="a-login" href="https://app.datacue.co" target="_blank">LOGIN TO MY DATACUE DASHBOARD</a>
+                <div class="a-sign-up">No account yet? Sign up <a href="https://app.datacue.co/en/sign-up" target="_blank" style="color: #8c5c85; font-weight: 600;">here</a></div>
+              </div>
+              <div class="datacue-helper-section">
+                <h2>Support Center</h2>
+                <p>Questions? Need help? Email us at <a href="mailto:support@datacue.co" target="_blank">support@datacue.co</a> to speak to a real person</p>
               </div>
             </div>
             <div id="datacue-tabs-2">

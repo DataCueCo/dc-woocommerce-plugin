@@ -1,0 +1,31 @@
+.datacue-helper-section {
+  margin-top: 10px;
+  padding: 20px 0;
+  border-top: 1px solid #aaa;
+}
+
+.datacue-helper-section a {
+  color: #0073aa;
+}
+
+.datacue-helper-section .list {
+  list-style-type: disc;
+  margin-left: 20px;
+}
+
+.datacue-helper-section .a-login {
+  display: inline-block;
+  text-decoration: none;
+  background-color: #80ab4b;
+  color: #fff;
+  padding: 0 20px;
+  height: 40px;
+  border-radius: 20px;
+  line-height: 40px;
+  text-align: center;
+}
+
+.datacue-helper-section .a-sign-up {
+  margin-top: 20px;
+  font-size: 15px;
+}
