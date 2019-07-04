@@ -25,7 +25,7 @@ use DataCue\WooCommerce\Modules\Order;
 use DataCue\WooCommerce\Modules\Event;
 use DataCue\WooCommerce\Pages\SettingsPage;
 use DataCue\WooCommerce\Widgets\Banner;
-use DataCue\WooCommerce\Widgets\ProductCarousel;
+use DataCue\WooCommerce\Widgets\Products;
 use DataCue\WooCommerce\Events\BrowserEvents;
 use DataCue\WooCommerce\Common\Plugin;
 use DataCue\WooCommerce\Common\Schedule;
@@ -62,7 +62,7 @@ if (is_plugin_active('dc-woocommerce-plugin/dc-woocommerce-plugin.php')) {
 
         // widgets
         Banner::registerWidget();
-        ProductCarousel::registerWidget();
+        Products::registerWidget();
 
         // events
         BrowserEvents::registerHooks($dataCueOptions, $env);

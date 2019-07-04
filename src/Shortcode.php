@@ -28,8 +28,8 @@ class Shortcode
 EOT;
     }
 
-    public function products()
+    public function products($attrs)
     {
-        return '<div class="widget"><div data-dc-product-carousels></div></div>';
+        return '<div class="widget"><div data-dc-products="' . $attrs['type'] . '"></div></div>';
     }
 }
