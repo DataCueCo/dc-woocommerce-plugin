@@ -145,6 +145,9 @@ class Schedule
                         case 'users':
                             $this->doUsersJob($row->action, $job);
                             break;
+                        case 'guest_users':
+                            $this->doUsersJob($row->action, $job);
+                            break;
                         case 'orders':
                             $this->doOrdersJob($row->action, $job);
                             break;
@@ -234,16 +237,33 @@ class Schedule
             $this->log('batch create users response: ' . $res);
         } elseif ($model === 'orders') {
             // batch create orders
-            $data = [];
+            $guestData = [];
+            $orderData = [];
             foreach ($job->ids as $id) {
                 $order = wc_get_order($id);
                 if ($order->get_status() !== 'cancelled') {
                     if ($item = Order::generateOrderItem($order)) {
-                        $data[] = $item;
+                        if ($order->get_customer_id() === 0) {
+                            $existing = false;
+                            foreach ($guestData as $guest) {
+                                if ($guest['user_id'] === $order->get_billing_email()) {
+                                    $existing = true;
+                                    break;
+                                }
+                            }
+                            if (!$existing) {
+                                $guestData[] = Order::generateGuestUserItem($order);
+                            }
+                        }
+                        $orderData[] = $item;
                     }
                 }
             }
-            $res = $this->client->orders->batchCreate($data);
+            if (count($guestData) > 0) {
+                $res = $this->client->users->batchCreate($guestData);
+                Log::info('batch create guest users response: ' . $res);
+            }
+            $res = $this->client->orders->batchCreate($orderData);
             $this->log('batch create orders response: ' . $res);
         }
     }

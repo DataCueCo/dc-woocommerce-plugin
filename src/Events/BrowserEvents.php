@@ -47,7 +47,9 @@ class BrowserEvents
      */
     public function onHead()
     {
-        if (is_checkout()) {
+        if (is_order_received_page()) {
+            $this->onOrderReceivedPage();
+        } else if (is_checkout()) {
             $this->onCheckoutPage();
         } else if (is_product()) {
             $this->onProductPage();
@@ -254,6 +256,33 @@ window.datacue.track({
   cart_link:'$cartLink'
 });
 </script>
+EOT;
+    }
+
+    /**
+     * For order received page
+     *
+     * @return void
+     */
+    private function onOrderReceivedPage()
+    {
+        $orderId = wc_get_order_id_by_order_key($_GET['key']);
+        $order = wc_get_order($orderId);
+        $userId = $order->get_customer_id();
+        if ($userId === 0) {
+            $userId = $order->get_billing_email();
+        }
+        echo <<<EOT
+<script>
+window.datacueConfig = {
+  api_key: '{$this->dataCueOptions['api_key']}',
+  user_id: '$userId',
+  options: {$this->dataCueConfigOptions},
+  page_type: 'order confirmation'
+};
+</script>
+<script src="https://cdn.datacue.co/js/datacue.js"></script>
+<script src="https://cdn.datacue.co/js/datacue-storefront.js"></script>
 EOT;
     }
 
