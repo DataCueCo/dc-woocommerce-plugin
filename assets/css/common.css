@@ -29,3 +29,57 @@
   margin-top: 20px;
   font-size: 15px;
 }
+
+.btn-disconnect {
+  display: inline-block;
+  text-decoration: none;
+  background-color: #eb5202;
+  color: #fff !important;
+  padding: 0 20px;
+  height: 40px;
+  border-radius: 20px;
+  line-height: 40px;
+  text-align: center;
+  font-size: 14px;
+}
+
+#dialog-disconnect {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#dialog-disconnect.hide {
+  display: none;
+}
+
+#dialog-disconnect .card {
+  width: 400px;
+  background: #fff;
+  border-radius: 10px;
+}
+
+#dialog-disconnect .card .title {
+  font-size: 16px;
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  font-weight: bold;
+}
+
+#dialog-disconnect .card .description {
+  font-size: 16px;
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+#dialog-disconnect .card .footer {
+  font-size: 16px;
+  padding: 16px;
+  text-align: right;
+}

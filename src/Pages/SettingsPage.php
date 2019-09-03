@@ -44,6 +44,7 @@ class SettingsPage
             add_action('admin_init', [$this, 'pageInit']);
             add_action('add_option_datacue_options', [$this, 'optionsAdded'], 10, 2);
             add_action('update_option_datacue_options', [$this, 'optionsUpdated'], 10, 2);
+            add_action('wp_ajax_disconnect_from_datacue', [$this, 'disconnect']);
 
             add_filter('plugin_action_links_dc-woocommerce-plugin/dc-woocommerce-plugin.php', [$this, 'pluginActionLinks']);
 
@@ -134,7 +135,11 @@ class SettingsPage
                   // This prints out all hidden setting fields
                   settings_fields('datacue_option_group');
                   do_settings_sections('datacue-setting-admin');
-                  submit_button();
+                  if (!isset($this->options['api_key']) || !isset($this->options['api_secret'])) {
+                    submit_button();
+                  } else {
+                    echo '<a id="btn-disconnect" class="btn-disconnect" href="javascript:;">DISCONNECT FROM DATACUE</a>';
+                  }
                   ?>
               </form>
               <div class="datacue-helper-section">
@@ -150,6 +155,18 @@ class SettingsPage
               <div class="datacue-helper-section">
                 <h2>Support Center</h2>
                 <p>Questions? Need help? Email us at <a href="mailto:support@datacue.co" target="_blank">support@datacue.co</a> to speak to a real person</p>
+              </div>
+              <div id="dialog-disconnect" class="hide">
+                <div class="card">
+                  <div class="title">Are you sure?</div>
+                  <div class="description">
+                    Disconnecting will delete all data from DataCue and disable recommendations!
+                  </div>
+                  <div class="footer">
+                    <button id="disconnect-ok">Disconnect</button>
+                    <button id="disconnect-cancel">Cancel</button>
+                  </div>
+                </div>
               </div>
             </div>
             <div id="datacue-tabs-2">
@@ -213,9 +230,47 @@ class SettingsPage
           });
           loadSyncStatus();
           setInterval(loadSyncStatus, 30000);
+
+          jQuery("#btn-disconnect").on("click", function() {
+            jQuery("#dialog-disconnect").removeClass("hide");
+          });
+
+          jQuery("#disconnect-ok").on("click", function() {
+            jQuery.ajax({
+              url: '<?php echo admin_url('admin-ajax.php'); ?>',
+              type: "POST",
+              data: {
+                action: 'disconnect_from_datacue'
+              },
+              dataType: 'json',
+            }).done(function () {
+              jQuery("#dialog-disconnect").addClass("hide");
+              window.location.reload();
+            });
+          });
         });
         </script>
         <?php
+    }
+
+    public function disconnect()
+    {
+        global $wpdb;
+        $wpdb->query("delete from {$wpdb->prefix}datacue_queue");
+
+        try {
+            $options = get_option('datacue_options');
+            $client = new Client(
+                $options['api_key'],
+                $options['api_secret'],
+                ['max_try_times' => $this->systemOptions['max_try_times']],
+                $this->systemOptions['env']
+            );
+            $client->client->clear();
+        } catch (\Exception $e) {
+        }
+        
+        delete_option('datacue_options');
     }
 
     /**
@@ -308,8 +363,9 @@ class SettingsPage
     public function apiKeyCallback()
     {
         printf(
-            '<input type="text" id="api_key" name="datacue_options[api_key]" value="%s" style="width: 200px" />',
-            isset($this->options['api_key']) ? esc_attr($this->options['api_key']) : ''
+            '<input type="text" id="api_key" name="datacue_options[api_key]" value="%s" style="width: 200px" %s />',
+            isset($this->options['api_key']) ? esc_attr($this->options['api_key']) : '',
+            isset($this->options['api_key']) ? 'disabled="disabled"' : ''
         );
     }
 
@@ -319,8 +375,9 @@ class SettingsPage
     public function apiSecretCallback()
     {
         printf(
-            '<input type="text" id="api_secret" name="datacue_options[api_secret]" value="%s" style="width: 300px" />',
-            isset($this->options['api_secret']) ? esc_attr($this->options['api_secret']) : ''
+            '<input type="password" id="api_secret" name="datacue_options[api_secret]" value="%s" style="width: 300px" %s />',
+            isset($this->options['api_secret']) ? '****************' : '',
+            isset($this->options['api_secret']) ? 'disabled="disabled"' : ''
         );
     }
 
