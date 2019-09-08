@@ -45,7 +45,7 @@ class Order extends Base
             $product = new WC_Order_Item_Product($one->get_id());
             $item['cart'][] = [
                 'product_id' => $product->get_product_id(),
-                'variant_id' => 'no-variants',
+                'variant_id' => empty($product->get_variation_id()) ? 'no-variants' : $product->get_variation_id(),
                 'quantity' => $one->get_quantity(),
                 'unit_price' => $product->get_total() / $one->get_quantity(),
                 'currency' => $currency,
