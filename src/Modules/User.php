@@ -9,6 +9,37 @@ namespace DataCue\WooCommerce\Modules;
 class User extends Base
 {
     /**
+     * Generate user item for DataCue
+     * @param $id int User ID
+     * @param $withId bool
+     * @return array|null
+     */
+    public static function generateUserItem($id, $withId = false)
+    {
+        global $wpdb;
+        $sql = "SELECT `user_email` as `email`, DATE_FORMAT(`user_registered`, '%%Y-%%m-%%dT%%TZ') AS `timestamp` FROM `wp_users` where `id`=%d";
+        $user = $wpdb->get_row(
+            $wpdb->prepare($sql, $id)
+        );
+        if (empty($user)) {
+            return null;
+        }
+        $sql = "SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=%d AND `meta_key` IN('first_name', 'last_name')";
+        $metaInfo = $wpdb->get_results(
+            $wpdb->prepare($sql, $id)
+        );
+        array_map(function ($item) use ($user) {
+            $user->{$item->meta_key} = $item->meta_value;
+        }, $metaInfo);
+
+        if ($withId) {
+            $user->user_id = $id;
+        }
+
+        return $user;
+    }
+
+    /**
      * User constructor.
      * @param $client
      * @param array $options
@@ -29,18 +60,7 @@ class User extends Base
     public function onUserCreated($userId)
     {
         $this->log('onUserCreated');
-        global $wpdb;
-        $sql = "SELECT `id` as `user_id`, `user_email` as `email`, DATE_FORMAT(`user_registered`, '%%Y-%%m-%%dT%%TZ') AS `timestamp` FROM `wp_users` where `id`=%d";
-        $user = $wpdb->get_row(
-            $wpdb->prepare($sql, $userId)
-        );
-        $sql = "SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=%d AND `meta_key` IN('first_name', 'last_name')";
-        $metaInfo = $wpdb->get_results(
-            $wpdb->prepare($sql, $userId)
-        );
-        array_map(function ($item) use ($user) {
-            $user->{$item->meta_key} = $item->meta_value;
-        }, $metaInfo);
+        $user = static::generateUserItem($userId, true);
 
         $this->addTaskToQueue('users', 'create', $userId, ['item' => $user]);
     }
@@ -52,18 +72,7 @@ class User extends Base
     public function onUserUpdated($userId)
     {
         $this->log('onUserUpdated');
-        global $wpdb;
-        $sql = "SELECT `user_email` as `email`, DATE_FORMAT(`user_registered`, '%%Y-%%m-%%dT%%TZ') AS `timestamp` FROM `wp_users` where `id`=%d";
-        $user = $wpdb->get_row(
-            $wpdb->prepare($sql, $userId)
-        );
-        $sql = "SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=%d AND `meta_key` IN('first_name', 'last_name')";
-        $metaInfo = $wpdb->get_results(
-            $wpdb->prepare($sql, $userId)
-        );
-        array_map(function ($item) use ($user) {
-            $user->{$item->meta_key} = $item->meta_value;
-        }, $metaInfo);
+        $user = static::generateUserItem($userId, false);
 
         if ($task = $this->findAliveTask('users', 'create', $userId)) {
             $user->user_id = $userId;

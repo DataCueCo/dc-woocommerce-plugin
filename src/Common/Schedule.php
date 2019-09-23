@@ -135,8 +135,8 @@ class Schedule
             $job = json_decode($row->job);
 
             try {
-                if ($row->action === 'init') {
-                    $this->doInit($row->model, $job);
+                if ($row->action === 'init' || $row->action === 'reinit') {
+                    $this->doInit($row->model, $job, $row->action);
                 } else {
                     switch ($row->model) {
                         case 'products':
@@ -174,6 +174,7 @@ class Schedule
      *
      * @param $model
      * @param $job
+     * @param $action
      * @throws \DataCue\Exceptions\RetryCountReachedException
      * @throws \DataCue\Exceptions\ClientException
      * @throws \DataCue\Exceptions\ExceedBodySizeLimitationException
@@ -182,7 +183,7 @@ class Schedule
      * @throws \DataCue\Exceptions\NetworkErrorException
      * @throws \DataCue\Exceptions\UnauthorizedException
      */
-    private function doInit($model, $job)
+    private function doInit($model, $job, $action)
     {
         global $wpdb;
         if ($model === 'products') {
@@ -201,7 +202,7 @@ class Schedule
             $this->log('batch create products response: ' . $res);
 
             // get variants belonging to the products
-            $this->addVariantsSyncTask($variableProductIds);
+            $this->addVariantsSyncTask($variableProductIds, $action);
         } elseif ($model === 'variants') {
             // batch create variants
             $data = [];
@@ -305,6 +306,10 @@ class Schedule
                     $this->log('delete product response: ' . $res);
                 }
                 break;
+            case 'delete_all':
+                $res = $this->client->products->deleteAll();
+                $this->log('delete all products response: ' . $res);
+                break;
             default:
                 break;
         }
@@ -337,6 +342,10 @@ class Schedule
             case 'delete':
                 $res = $this->client->users->delete($job->userId);
                 $this->log('delete user response: ' . $res);
+                break;
+            case 'delete_all':
+                $res = $this->client->users->deleteAll();
+                $this->log('delete all users response: ' . $res);
                 break;
             default:
                 break;
@@ -371,13 +380,17 @@ class Schedule
                 $res = $this->client->orders->delete($job->orderId);
                 $this->log('delete order response: ', $res);
                 break;
+            case 'delete_all':
+                $res = $this->client->orders->deleteAll();
+                $this->log('delete all orders response: ' . $res);
+                break;
             default:
                 break;
         }
     }
 
 
-    private function addVariantsSyncTask($productIds)
+    private function addVariantsSyncTask($productIds, $action)
     {
         $this->log('addVariantsSyncTask');
 
@@ -398,7 +411,7 @@ class Schedule
                 'ids' => $postIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', 'init', %s, NULL, NOW())";
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', '$action', %s, NULL, NOW())";
             $wpdb->query(
                 $wpdb->prepare($sql, $job)
             );

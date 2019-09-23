@@ -13,12 +13,15 @@ class Product extends Base
      * @param $id int Product ID
      * @param $withId bool
      * @param $isVariant bool
-     * @return array
+     * @return array|null
      */
     public static function generateProductItem($id, $withId = false, $isVariant = false)
     {
         if (is_string($id) || is_int($id)) {
             $product = wc_get_product($id);
+            if (empty($product)) {
+                return null;
+            }
         } else {
             $product = $id;
         }

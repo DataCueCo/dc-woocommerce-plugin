@@ -73,6 +73,7 @@ class Initializer
     /**
      * Batch create products
      *
+     * @param $type
      * @throws \DataCue\Exceptions\ClientException
      * @throws \DataCue\Exceptions\ExceedBodySizeLimitationException
      * @throws \DataCue\Exceptions\ExceedListDataSizeLimitationException
@@ -81,7 +82,7 @@ class Initializer
      * @throws \DataCue\Exceptions\RetryCountReachedException
      * @throws \DataCue\Exceptions\UnauthorizedException
      */
-    private function batchCreateProducts()
+    public function batchCreateProducts($type = 'init')
     {
         $this->log('batchCreateProducts');
 
@@ -91,10 +92,13 @@ class Initializer
             return $item->id;
         }, $products);
 
-        $res = $this->client->overview->products();
-        $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
-
-        $postIdsList = array_chunk(array_diff($productIds, $existingIds), static::CHUNK_SIZE);
+        if ($type === 'init') {
+            $res = $this->client->overview->products();
+            $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
+            $postIdsList = array_chunk(array_diff($productIds, $existingIds), static::CHUNK_SIZE);
+        } else {
+            $postIdsList = array_chunk($productIds, static::CHUNK_SIZE);
+        }
 
         foreach($postIdsList as $postIds) {
             $this->log($postIds);
@@ -102,7 +106,7 @@ class Initializer
                 'ids' => $postIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('products', 'init', %s, NULL, NOW())";
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('products', '$type', %s, NULL, NOW())";
             $wpdb->query(
                 $wpdb->prepare($sql, $job)
             );
@@ -112,7 +116,7 @@ class Initializer
     /**
      * Batch create variants
      */
-    private function batchCreateVariants()
+    public function batchCreateVariants($type = 'init')
     {
         $this->log('batchCreateVariants');
 
@@ -130,7 +134,7 @@ class Initializer
                 'ids' => $postIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', 'init', %s, NULL, NOW())";
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('variants', '$type', %s, NULL, NOW())";
             $wpdb->query(
                 $wpdb->prepare($sql, $job)
             );
@@ -140,6 +144,7 @@ class Initializer
     /**
      * Batch create users
      *
+     * @param $type
      * @throws \DataCue\Exceptions\ClientException
      * @throws \DataCue\Exceptions\ExceedBodySizeLimitationException
      * @throws \DataCue\Exceptions\ExceedListDataSizeLimitationException
@@ -148,7 +153,7 @@ class Initializer
      * @throws \DataCue\Exceptions\RetryCountReachedException
      * @throws \DataCue\Exceptions\UnauthorizedException
      */
-    private function batchCreateUsers()
+    public function batchCreateUsers($type = 'init')
     {
         $this->log('batchCreateUsers');
 
@@ -158,17 +163,20 @@ class Initializer
             return $item->id;
         }, $users);
 
-        $res = $this->client->overview->users();
-        $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
-
-        $userIdsList = array_chunk(array_diff($userIds, $existingIds), static::CHUNK_SIZE);
+        if ($type === 'init') {
+            $res = $this->client->overview->users();
+            $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
+            $userIdsList = array_chunk(array_diff($userIds, $existingIds), static::CHUNK_SIZE);
+        } else {
+            $userIdsList = array_chunk($userIds, static::CHUNK_SIZE);
+        }
 
         foreach ($userIdsList as $userIds) {
             $job = json_encode([
                 'ids' => $userIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('users', 'init', %s, NULL, NOW())";
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('users', '$type', %s, NULL, NOW())";
             $wpdb->query(
                 $wpdb->prepare($sql, $job)
             );
@@ -178,6 +186,7 @@ class Initializer
     /**
      * Batch create orders
      *
+     * @param $type
      * @throws \DataCue\Exceptions\ClientException
      * @throws \DataCue\Exceptions\ExceedBodySizeLimitationException
      * @throws \DataCue\Exceptions\ExceedListDataSizeLimitationException
@@ -186,7 +195,7 @@ class Initializer
      * @throws \DataCue\Exceptions\RetryCountReachedException
      * @throws \DataCue\Exceptions\UnauthorizedException
      */
-    private function batchCreateOrders()
+    public function batchCreateOrders($type = 'init')
     {
         $this->log('batchCreateOrders');
 
@@ -196,17 +205,20 @@ class Initializer
             return $item->id;
         }, $orders);
 
-        $res = $this->client->overview->orders();
-        $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
-
-        $ordersIdList = array_chunk(array_diff($orderIds, $existingIds), static::CHUNK_SIZE);
+        if ($type === 'init') {
+            $res = $this->client->overview->orders();
+            $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
+            $ordersIdList = array_chunk(array_diff($orderIds, $existingIds), static::CHUNK_SIZE);
+        } else {
+            $ordersIdList = array_chunk($orderIds, static::CHUNK_SIZE);
+        }
 
         foreach($ordersIdList as $orderIds) {
             $job = json_encode([
                 'ids' => $orderIds,
             ]);
 
-            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('orders', 'init', %s, NULL, NOW())";
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('orders', '$type', %s, NULL, NOW())";
             $wpdb->query(
                 $wpdb->prepare($sql, $job)
             );

@@ -3,7 +3,7 @@
  * Plugin Name: DataCue for WooCommerce
  * Plugin URI: https://datacue.co/
  * Description: Improve sales by showing relevant content to your WooCommerce visitors with DataCue
- * Version: 1.0.10
+ * Version: 1.0.11
  * Author: DataCue
  * Author URI: https://datacue.co/
  * Text Domain: woocommerce datacue plugin
@@ -29,6 +29,7 @@ use DataCue\WooCommerce\Widgets\Products;
 use DataCue\WooCommerce\Events\BrowserEvents;
 use DataCue\WooCommerce\Common\Plugin;
 use DataCue\WooCommerce\Common\Schedule;
+use DataCue\WooCommerce\Common\ReSync;
 use DataCue\WooCommerce\Shortcode;
 
 $env = file_exists(__DIR__ . '/staging') ? 'development' : 'production'; // development or production
@@ -58,6 +59,7 @@ if (is_plugin_active('dc-woocommerce-plugin/dc-woocommerce-plugin.php')) {
         Event::registerHooks($client, $options);
 
         // schedule hooks
+        ReSync::registerHooks($client, $options);
         Schedule::registerHooks($client, $options);
 
         // widgets
