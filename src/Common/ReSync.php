@@ -197,7 +197,6 @@ class ReSync
             $this->getInitializer()->batchCreateOrders('reinit');
         } elseif (is_array($data)) {
             foreach ($data as $orderId) {
-                Queue::addTask('orders', 'delete', $orderId, ['orderId' => $orderId]);
                 $order = wc_get_order($orderId);
                 if (empty($order) || empty($order->get_id())) {
                     continue;
