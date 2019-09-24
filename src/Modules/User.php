@@ -17,14 +17,14 @@ class User extends Base
     public static function generateUserItem($id, $withId = false)
     {
         global $wpdb;
-        $sql = "SELECT `user_email` as `email`, DATE_FORMAT(`user_registered`, '%%Y-%%m-%%dT%%TZ') AS `timestamp` FROM `wp_users` where `id`=%d";
+        $sql = "SELECT `user_email` as `email`, DATE_FORMAT(`user_registered`, '%%Y-%%m-%%dT%%TZ') AS `timestamp` FROM `{$wpdb->prefix}users` where `id`=%d";
         $user = $wpdb->get_row(
             $wpdb->prepare($sql, $id)
         );
         if (empty($user)) {
             return null;
         }
-        $sql = "SELECT `meta_key`, `meta_value` FROM `wp_usermeta` where `user_id`=%d AND `meta_key` IN('first_name', 'last_name')";
+        $sql = "SELECT `meta_key`, `meta_value` FROM `{$wpdb->prefix}usermeta` where `user_id`=%d AND `meta_key` IN('first_name', 'last_name')";
         $metaInfo = $wpdb->get_results(
             $wpdb->prepare($sql, $id)
         );

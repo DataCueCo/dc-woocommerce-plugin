@@ -178,7 +178,7 @@ class ReSync
                     Queue::addTask(
                         'products',
                         'create',
-                        $variantId,
+                        $productId,
                         ['productId' => $productId, 'variantId' => 'no-variants', 'item' => $item]
                     );
                 }
