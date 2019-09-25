@@ -3,7 +3,7 @@
  * Plugin Name: DataCue for WooCommerce
  * Plugin URI: https://datacue.co/
  * Description: Improve sales by showing relevant content to your WooCommerce visitors with DataCue
- * Version: 1.0.12
+ * Version: 1.0.13
  * Author: DataCue
  * Author URI: https://datacue.co/
  * Text Domain: woocommerce datacue plugin
@@ -42,9 +42,13 @@ $options = ['debug' => DEBUG];
 Plugin::registerHooks(__FILE__, $options);
 
 if (is_plugin_active('dc-woocommerce-plugin/dc-woocommerce-plugin.php')) {
-    $dataCueOptions = get_option('datacue_options');
+    // set integration and version info to client
+    $pluginData = get_plugin_data(__FILE__);
+    Client::setIntegrationAndVersion('WooCommerce', $pluginData['Version']);
 
+    $dataCueOptions = get_option('datacue_options');
     if ($dataCueOptions) {
+
         $client = new Client(
             $dataCueOptions['api_key'],
             $dataCueOptions['api_secret'],
