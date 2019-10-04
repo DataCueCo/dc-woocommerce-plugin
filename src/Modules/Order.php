@@ -37,6 +37,7 @@ class Order extends Base
         $item = [
             'order_id' => $order->get_id(),
             'user_id' => '' . ($userId === 0 ? $order->get_billing_email() : $userId),
+            'order_status' => $order->get_status() === 'cancelled' ? 'cancelled' : 'completed',
             'cart' => [],
             'timestamp' => date('c', is_null($order->get_date_created()) ? time() : $order->get_date_created()->getTimestamp()),
         ];

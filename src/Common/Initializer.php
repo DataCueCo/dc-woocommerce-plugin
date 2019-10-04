@@ -200,7 +200,7 @@ class Initializer
         $this->log('batchCreateOrders');
 
         global $wpdb;
-        $orders = $wpdb->get_results("SELECT `id` FROM `{$wpdb->prefix}posts` WHERE `post_type` = 'shop_order' AND `post_status` != 'wc-cancelled'");
+        $orders = $wpdb->get_results("SELECT `id` FROM `{$wpdb->prefix}posts` WHERE `post_type` = 'shop_order'");
         $orderIds = array_map(function ($item) {
             return $item->id;
         }, $orders);

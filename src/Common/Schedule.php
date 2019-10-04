@@ -242,26 +242,24 @@ class Schedule
             $orderData = [];
             foreach ($job->ids as $id) {
                 $order = wc_get_order($id);
-                if ($order->get_status() !== 'cancelled') {
-                    if ($item = Order::generateOrderItem($order)) {
-                        if (empty($order->get_customer_id())) {
-                            if (empty($order->get_billing_email())) {
-                                Log::info("order #$id warning: user_id === 0 and email is empty");
-                                continue;
-                            }
-                            $existing = false;
-                            foreach ($guestData as $guest) {
-                                if ($guest['user_id'] === $order->get_billing_email()) {
-                                    $existing = true;
-                                    break;
-                                }
-                            }
-                            if (!$existing) {
-                                $guestData[] = Order::generateGuestUserItem($order);
+                if ($item = Order::generateOrderItem($order)) {
+                    if (empty($order->get_customer_id())) {
+                        if (empty($order->get_billing_email())) {
+                            Log::info("order #$id warning: user_id === 0 and email is empty");
+                            continue;
+                        }
+                        $existing = false;
+                        foreach ($guestData as $guest) {
+                            if ($guest['user_id'] === $order->get_billing_email()) {
+                                $existing = true;
+                                break;
                             }
                         }
-                        $orderData[] = $item;
+                        if (!$existing) {
+                            $guestData[] = Order::generateGuestUserItem($order);
+                        }
                     }
+                    $orderData[] = $item;
                 }
             }
             if (count($guestData) > 0) {
