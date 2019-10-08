@@ -13,7 +13,7 @@ class ReSync
     /**
      * Interval between two cron job.
      */
-    const INTERVAL = 3600;
+    const INTERVAL = 900;
 
     /**
      * @var \DataCue\Client
