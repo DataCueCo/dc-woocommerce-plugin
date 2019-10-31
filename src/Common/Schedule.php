@@ -458,6 +458,11 @@ class Schedule
 
         global $wpdb;
         $res = [
+            'categories' => [
+                'total' => 0,
+                'completed' => 0,
+                'failed' => 0,
+            ],
             'products' => [
                 'total' => 0,
                 'completed' => 0,
