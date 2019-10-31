@@ -2,6 +2,7 @@
 
 namespace DataCue\WooCommerce\Common;
 
+use DataCue\WooCommerce\Modules\Category;
 use DataCue\WooCommerce\Utils\Log;
 use DataCue\WooCommerce\Modules\Product;
 use DataCue\WooCommerce\Modules\Order;
@@ -139,6 +140,9 @@ class Schedule
                     $this->doInit($row->model, $job, $row->action);
                 } else {
                     switch ($row->model) {
+                        case 'categories':
+                            $this->doCategoriesJob($row->action, $job);
+                            break;
                         case 'products':
                             $this->doProductsJob($row->action, $job);
                             break;
@@ -186,7 +190,15 @@ class Schedule
     private function doInit($model, $job, $action)
     {
         global $wpdb;
-        if ($model === 'products') {
+        if ($model === 'categories') {
+            // batch create categories
+            $data = [];
+            foreach ($job->ids as $id) {
+                $data[] = Category::generateCategoryItem($id, true);
+            }
+            $res = $this->client->categories->batchCreate($data);
+            $this->log('batch create categories response: ' . $res);
+        } elseif ($model === 'products') {
             // batch create products
             $data = [];
             $variableProductIds = [];
@@ -268,6 +280,30 @@ class Schedule
             }
             $res = $this->client->orders->batchCreate($orderData);
             $this->log('batch create orders response: ' . $res);
+        }
+    }
+
+    private function doCategoriesJob($action, $job)
+    {
+        switch ($action) {
+            case 'create':
+                $res = $this->client->categories->create($job->item);
+                $this->log('create category response: ' . $res);
+                break;
+            case 'update':
+                $res = $this->client->categories->update($job->categoryId, $job->item);
+                $this->log('update category response: ' . $res);
+                break;
+            case 'delete':
+                $res = $this->client->categories->delete($job->categoryId);
+                $this->log('delete category response: ' . $res);
+                break;
+            case 'delete_all':
+                $res = $this->client->categories->deleteAll();
+                $this->log('delete all categories response: ' . $res);
+                break;
+            default:
+                break;
         }
     }
 

@@ -2,6 +2,7 @@
 
 namespace DataCue\WooCommerce\Common;
 
+use DataCue\WooCommerce\Modules\Category;
 use DataCue\WooCommerce\Utils\Queue;
 use DataCue\WooCommerce\Modules\User;
 use DataCue\WooCommerce\Modules\Product;
@@ -106,6 +107,9 @@ class ReSync
             if (property_exists($data, 'users')) {
                 $this->executeUsers($data->users);
             }
+            if (property_exists($data, 'categories')) {
+                $this->executeCategories($data->categories);
+            }
             if (property_exists($data, 'products')) {
                 $this->executeProducts($data->products);
             }
@@ -140,6 +144,35 @@ class ReSync
                     [
                         'userId' => $userId,
                         'item' => $user,
+                    ]
+                );
+            }
+        }
+    }
+
+    private function executeCategories($data)
+    {
+        if (is_null($data)) {
+            return;
+        }
+
+        if ($data === 'full') {
+            Queue::addTaskWithModelId('categories', 'delete_all', []);
+            $this->getInitializer()->batchCreateCategories('reinit');
+        } elseif (is_array($data)) {
+            foreach ($data as $categoryId) {
+                Queue::addTask('categories', 'delete', $categoryId, ['categoryId' => $categoryId]);
+                $category = Category::generateCategoryItem($categoryId, true);
+                if (empty($category)) {
+                    continue;
+                }
+                Queue::addTask(
+                    'categories',
+                    'create',
+                    $categoryId,
+                    [
+                        'categoryId' => $categoryId,
+                        'item' => $category,
                     ]
                 );
             }

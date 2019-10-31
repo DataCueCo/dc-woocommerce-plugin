@@ -64,10 +64,54 @@ class Initializer
         }
 
         $this->batchCreateProducts();
+        $this->batchCreateCategories();
         // sync variants once the tasks about product are fired
         // $this->batchCreateVariants();
         $this->batchCreateUsers();
         $this->batchCreateOrders();
+    }
+
+    /**
+     * Batch create categories
+     *
+     * @param string $type
+     * @throws \DataCue\Exceptions\ClientException
+     * @throws \DataCue\Exceptions\ExceedBodySizeLimitationException
+     * @throws \DataCue\Exceptions\ExceedListDataSizeLimitationException
+     * @throws \DataCue\Exceptions\InvalidEnvironmentException
+     * @throws \DataCue\Exceptions\NetworkErrorException
+     * @throws \DataCue\Exceptions\RetryCountReachedException
+     * @throws \DataCue\Exceptions\UnauthorizedException
+     */
+    public function batchCreateCategories($type = 'init')
+    {
+        $this->log('batchCreateCategories');
+
+        global $wpdb;
+        $terms = $wpdb->get_results("SELECT t.term_id FROM `{$wpdb->prefix}terms` t LEFT JOIN `{$wpdb->prefix}term_taxonomy` tt ON t.term_id = tt.term_id WHERE tt.taxonomy = 'product_cat'");
+        $categoryIds = array_map(function ($item) {
+            return $item->term_id;
+        }, $terms);
+
+        if ($type === 'init') {
+            $res = $this->client->overview->categories();
+            $existingIds = !is_null($res->getData()->ids) ? $res->getData()->ids : [];
+            $categoryIdsList = array_chunk(array_diff($categoryIds, $existingIds), static::CHUNK_SIZE);
+        } else {
+            $categoryIdsList = array_chunk($categoryIds, static::CHUNK_SIZE);
+        }
+
+        foreach($categoryIdsList as $categoryIds) {
+            $this->log($categoryIds);
+            $job = json_encode([
+                'ids' => $categoryIds,
+            ]);
+
+            $sql = "INSERT INTO {$wpdb->prefix}datacue_queue (model, `action`, job, executed_at, created_at) values ('categories', '$type', %s, NULL, NOW())";
+            $wpdb->query(
+                $wpdb->prepare($sql, $job)
+            );
+        }
     }
 
     /**
