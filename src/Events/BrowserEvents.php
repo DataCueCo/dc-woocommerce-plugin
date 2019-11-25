@@ -2,6 +2,7 @@
 
 namespace DataCue\WooCommerce\Events;
 
+use DataCue\WooCommerce\Modules\Category;
 use DataCue\WooCommerce\Modules\Product;
 
 /**
@@ -94,6 +95,7 @@ EOT;
     {
         // current category
         $category = $GLOBALS['wp_query']->get_queried_object();
+        $categoryUpdate = json_encode(Category::generateCategoryItem($category->term_id));
         echo <<<EOT
 <script>
 window.datacueConfig = {
@@ -101,7 +103,8 @@ window.datacueConfig = {
   user_id: {$this->getUserId()},
   options: {$this->dataCueConfigOptions},
   page_type: 'category',
-  category_name: '{$category->name}'
+  category_id: '{$category->term_id}',
+  category_update: $categoryUpdate
 };
 </script>
 <script src="https://cdn.datacue.co/js/datacue.js"></script>
@@ -120,14 +123,13 @@ EOT;
         $product = wc_get_product($productId);
         $variants = $product->get_children();
         if (count($variants) > 0) {
-            $item = Product::generateProductItem($variants[0], false, true);
-            $productUpdateStr = json_encode($item);
-            $variantId = $variants[0];
+            $productUpdate = array_map(function ($id) {
+                return Product::generateProductItem($id, true, true);
+            }, $variants);
         } else {
-            $item = Product::generateProductItem($productId);
-            $productUpdateStr = json_encode($item);
-            $variantId = 'no-variants';
+            $productUpdate = [Product::generateProductItem($productId, true)];
         }
+        $productUpdateStr = json_encode($productUpdate);
 
         echo <<<EOT
 <script>
@@ -137,7 +139,6 @@ window.datacueConfig = {
   options: {$this->dataCueConfigOptions},
   page_type: 'product',
   product_id: '$productId',
-  variant_id: '$variantId',
   product_update: $productUpdateStr
 };
 </script>

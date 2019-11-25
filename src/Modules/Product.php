@@ -58,30 +58,22 @@ class Product extends Base
         }
 
         // get categories
-        $item['categories'] = [];
-        $item['main_category'] = '';
-
         if ($isVariant) {
-            $categoryIds = $parentProduct->get_category_ids();
+            $item['category_ids'] = array_map(function ($item) {
+                return "$item";
+            }, $parentProduct->get_category_ids());
         } else {
-            $categoryIds = $product->get_category_ids();
-        }
-        if (count($categoryIds) > 0) {
-            for ($i = 0; $i < count($categoryIds); $i++) {
-                $category = get_term($categoryIds[$i], 'product_cat');
-                $item['categories'][] = $category->name;
-                if ($i === 0) {
-                    $item['main_category'] = $category->name;
-                }
-            }
+            $item['category_ids'] = array_map(function ($item) {
+                return "$item";
+            }, $product->get_category_ids());
         }
 
         if ($withId) {
             if ($isVariant) {
-                $item['product_id'] = $product->get_parent_id();
-                $item['variant_id'] = $product->get_id();
+                $item['product_id'] = '' . $product->get_parent_id();
+                $item['variant_id'] = '' . $product->get_id();
             } else {
-                $item['product_id'] = $product->get_id();
+                $item['product_id'] = '' . $product->get_id();
                 $item['variant_id'] = 'no-variants';
             }
         }
