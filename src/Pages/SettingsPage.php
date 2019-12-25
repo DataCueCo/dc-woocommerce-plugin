@@ -248,6 +248,10 @@ class SettingsPage
               window.location.reload();
             });
           });
+
+            jQuery("#disconnect-cancel").on("click", function() {
+                jQuery("#dialog-disconnect").addClass("hide");
+            });
         });
         </script>
         <?php
