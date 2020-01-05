@@ -17,6 +17,11 @@ class Plugin
     private $logger = null;
 
     /**
+     * @var null
+     */
+    private $baseFile = null;
+
+    /**
      * Generation
      *
      * @param $file
@@ -34,6 +39,7 @@ class Plugin
      */
     public function __construct($file, $options)
     {
+        $this->baseFile = $file;
         if (array_key_exists('debug', $options) && $options['debug']) {
             $this->logger = new Log();
         }
@@ -46,6 +52,16 @@ class Plugin
      */
     public function onPluginActivated()
     {
+        if (version_compare(PHP_VERSION, '5.5', '<')) {
+            $this->log('php version must be greater than or equal to 5.5');
+            deactivate_plugins($this->baseFile);
+            wp_die(
+                '<p>The <strong>DataCue</strong> plugin requires PHP version 5.5 or greater.</p>',
+                'Plugin Activation Error',
+                [ 'response' => 200, 'back_link' => true ]
+            );
+            return;
+        }
         $this->log('onPluginActivated');
         $this->createQueueTable();
     }
