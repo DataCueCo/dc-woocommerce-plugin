@@ -32,11 +32,9 @@ class Order extends Base
             return null;
         }
         
-        $userId = $order->get_customer_id();
-
         $item = [
             'order_id' => $order->get_id(),
-            'user_id' => '' . ($userId === 0 ? $order->get_billing_email() : $userId),
+            'user_id' => '' . static::getUserId($order),
             'order_status' => $order->get_status() === 'cancelled' ? 'cancelled' : 'completed',
             'cart' => [],
             'timestamp' => date('c', is_null($order->get_date_created()) ? time() : $order->get_date_created()->getTimestamp()),
@@ -60,7 +58,7 @@ class Order extends Base
      * Generate guest user item for DataCue
      *
      * @param \WC_Order $order
-     * @return void
+     * @return array
      */
     public static function generateGuestUserItem($order)
     {
@@ -73,6 +71,32 @@ class Order extends Base
             'email_subscriber' => false,
             'guest_account' => true,
         ];
+    }
+
+    /**
+     * @param \WC_Order $order
+     * @return bool
+     */
+    public static function isEmailGuestOrder($order)
+    {
+        return empty($order->get_customer_id()) && !empty($order->get_billing_email());
+    }
+
+    /**
+     * @param \WC_Order $order
+     * @return string
+     */
+    public static function getUserId($order)
+    {
+        $userId = $order->get_customer_id();
+        if (!empty($userId)) {
+            return '' . $userId;
+        }
+        $email = $order->get_billing_email();
+        if (!empty($email)) {
+            return $email;
+        }
+        return 'no-user';
     }
 
     /**
@@ -110,7 +134,7 @@ class Order extends Base
             $item = static::generateOrderItem($order);
             if (!is_null($item)) {
                 $this->log('Create order');
-                if ($order->get_customer_id() === 0) {
+                if (static::isEmailGuestOrder($order)) {
                     $this->addTaskToQueue('guest_users', 'create', $id, ['item' => static::generateGuestUserItem($order)]);
                 }
                 $this->addTaskToQueue('orders', 'create', $id, ['item' => $item]);
@@ -145,7 +169,7 @@ class Order extends Base
                     $this->log('Create order id=' . $id);
                     $item = static::generateOrderItem($order);
                     if (!is_null($item)) {
-                        if ($order->get_customer_id() === 0) {
+                        if (static::isEmailGuestOrder($order)) {
                             $this->addTaskToQueue('guest_users', 'create', $id, ['item' => static::generateGuestUserItem($order)]);
                         }
                         $this->addTaskToQueue('orders', 'create', $id, ['item' => $item]);

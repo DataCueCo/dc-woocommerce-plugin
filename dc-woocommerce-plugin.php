@@ -3,7 +3,7 @@
  * Plugin Name: DataCue for WooCommerce
  * Plugin URI: https://help.datacue.co/install/woocommerce.html
  * Description: Improve sales by showing relevant content to your WooCommerce visitors with DataCue
- * Version: 1.1.5
+ * Version: 1.1.6
  * Author: DataCue
  * Author URI: https://datacue.co/
  * Text Domain: woocommerce datacue plugin

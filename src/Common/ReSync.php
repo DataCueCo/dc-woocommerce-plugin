@@ -236,7 +236,7 @@ class ReSync
                 }
                 $item = Order::generateOrderItem($order);
                 if (!is_null($item)) {
-                    if ($order->get_customer_id() === 0) {
+                    if (Order::isEmailGuestOrder($order)) {
                         Queue::addTask('guest_users', 'create', $orderId, ['item' => Order::generateGuestUserItem($order)]);
                     }
                     Queue::addTask('orders', 'create', $orderId, ['item' => $item]);
